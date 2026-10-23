@@ -14,6 +14,8 @@ COPY app/__init__.py app/config.py app/encoders.py ./app/
 RUN python -c "import app.encoders"
 # The models are inside the image now: never contact Hugging Face at runtime
 ENV HF_HUB_OFFLINE=1
+# print() lines show up in `docker compose logs` at once, not when a buffer fills
+ENV PYTHONUNBUFFERED=1
 
 COPY app ./app
 COPY data ./data

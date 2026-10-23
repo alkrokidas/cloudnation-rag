@@ -19,7 +19,13 @@ You need Docker and an Anthropic API key. Give the key in one of two ways, never
 docker compose up --build
 ```
 
-The first build downloads PyTorch (CPU) and the two local models, so it takes a few minutes. Then open <http://localhost:8000>, pick a user, and ask a question. The Qdrant dashboard is at <http://localhost:6333/dashboard>.
+In GitHub Codespaces add the second file, because Docker's own DNS does not work there and the containers share the codespace's network instead:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.codespaces.yml up --build
+```
+
+The first build downloads PyTorch (CPU) and the two local models, so it takes a few minutes. Then open <http://localhost:8000> (in Codespaces: the Ports tab, port 8000), pick a user, and ask a question. The Qdrant dashboard is at <http://localhost:6333/dashboard>.
 
 What starts:
 

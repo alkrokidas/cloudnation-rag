@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from qdrant_client import models
 
-from app.config import CHUNKS_CSV, COLLECTION, MOCK_DOCS_JSON
+from app.config import CHUNKS_CSV, COLLECTION, MOCK_DOCS_JSON, QDRANT_URL
 from app.encoders import embed_passages, embedder
 from app.search import qdrant, token_id, tokenize
 
@@ -65,13 +65,16 @@ def build():
 
 def wait_for_qdrant(seconds=60):
     """In Docker the Qdrant container may still be starting when this one runs."""
-    for _ in range(seconds):
+    print(f"Waiting for Qdrant at {QDRANT_URL} ...", flush=True)
+    deadline = time.monotonic() + seconds          # a clock, not a counter: one try can hang for seconds
+    while True:
         try:
             qdrant.get_collections()
             return
-        except Exception:
+        except Exception as error:
+            if time.monotonic() > deadline:
+                raise RuntimeError(f"Qdrant at {QDRANT_URL} did not answer within {seconds} s: {error}") from error
             time.sleep(1)
-    raise RuntimeError(f"Qdrant did not answer within {seconds} s")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,18 @@
+# GitHub Codespaces only. Docker's own DNS failed inside our codespace: the containers could not
+# resolve api.anthropic.com, so the three containers share the codespace's network instead.
+#   docker compose -f docker-compose.yml -f docker-compose.codespaces.yml up --build
+services:
+  qdrant:
+    network_mode: host
+    ports: !reset []
+
+  ingest:
+    network_mode: host
+    environment:
+      QDRANT_URL: http://localhost:6333
+
+  api:
+    network_mode: host
+    ports: !reset []
+    environment:
+      QDRANT_URL: http://localhost:6333
