@@ -2,10 +2,10 @@
 
     docker compose exec api python -m app.bench
 
-Runs the 16 simple questions of the router examples (the System 1 questions) with the current settings and
-cheaper ones, and shows how far the top score moves and how often the grade changes compared to now, because
-TAU_LOW and TAU_HIGH were measured with the current settings. No LLM calls, no cost. Takes 1-2 minutes on 2 CPU cores.
-Rows tried and rejected on 23/10 (DEPTH 5, int8 weights) are listed in config.py.
+Runs the 16 simple questions of the router examples (the System 1 questions) at 512 tokens, where TAU_LOW and
+TAU_HIGH were measured, and with cheaper settings, and shows how far the top score moves and how often the grade
+changes compared to 512 tokens. No LLM calls, no cost. Takes 1-2 minutes on 2 CPU cores.
+Rows tried and rejected on 23/10 (DEPTH 5, int8 weights, 2 threads on 2 vCPUs) are listed in config.py.
 """
 import os
 import statistics
@@ -22,11 +22,10 @@ from app.search import search_qdrant
 
 QUESTIONS = [q for q, label in ROUTER_EXAMPLES if label == 0]
 DEFAULT_THREADS, VCPUS = torch.get_num_threads(), os.cpu_count()
-VARIANTS = [   # (name, max tokens per question + chunk, PyTorch threads)
-    (f"now: 512 tokens, {DEFAULT_THREADS} thread(s)", 512, DEFAULT_THREADS),
-    ("256 tokens: long chunks cut", 256, DEFAULT_THREADS),
-    (f"all {VCPUS} vCPUs as threads", 512, VCPUS),
-    (f"256 tokens + {VCPUS} threads", 256, VCPUS),
+VARIANTS = [   # (name, max tokens per question + chunk, PyTorch threads); the TAUs were measured at 512 tokens
+    (f"512 tokens, {DEFAULT_THREADS} thread(s): baseline", 512, DEFAULT_THREADS),
+    (f"256 tokens, {DEFAULT_THREADS} thread(s)", 256, DEFAULT_THREADS),
+    (f"256 tokens, all {VCPUS} vCPUs as threads", 256, VCPUS),
 ]
 
 
@@ -43,7 +42,7 @@ def main():
     for q in QUESTIONS:
         candidates[q], ms = timed(lambda: search_qdrant(q, "helpdesk"))
         search_ms.append(ms)
-    print(f"{'embed + Qdrant search':32} median {statistics.median(search_ms):5.0f} ms   slowest {max(search_ms):5.0f} ms")
+    print(f"{'embed + Qdrant search':36} median {statistics.median(search_ms):5.0f} ms   slowest {max(search_ms):5.0f} ms")
     reranker.predict([(QUESTIONS[0], t) for t in candidates[QUESTIONS[0]]["embed_text"]])   # warm-up
 
     baseline = None
@@ -60,7 +59,7 @@ def main():
         changed = sum(zone(a) != zone(b) for a, b in zip(tops, baseline))
         moved = max(abs(a - b) for a, b in zip(tops, baseline))
         counts = Counter(zone(t) for t in tops)
-        print(f"{name:32} median {statistics.median(times):5.0f} ms   slowest {max(times):5.0f} ms   "
+        print(f"{name:36} median {statistics.median(times):5.0f} ms   slowest {max(times):5.0f} ms   "
               f"score moved <= {moved:4.2f}   grade changed {changed}/{len(QUESTIONS)}   "
               f"(R {counts['Relevant']}, A {counts['Ambiguous']}, I {counts['Irrelevant']})", flush=True)
     print(f"For scale: TAU_LOW {TAU_LOW}, TAU_HIGH {TAU_HIGH}, {TAU_HIGH - TAU_LOW:.2f} apart")

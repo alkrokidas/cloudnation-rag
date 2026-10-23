@@ -17,8 +17,12 @@ RERANKER = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"   # NB4: hit@1 50% -> 75
 DEPTH = 10              # NB4: candidates the reranker reads; 20 gave the same quality
 # Codespace bench (2 vCPU, python -m app.bench, 16 questions), reranker time per question:
 #   batch 32: 2575 ms -> batch 1: 1501 ms with the same scores (no padding up to the longest pair)
+#   512 -> 256 tokens per question + chunk: 1726 -> 1220 ms, grade changed on 0/16, top score moved <= 0.22
+#   (TAU_HIGH - TAU_LOW = 1.86). The reranker no longer reads the end of long chunks; the LLM still reads all of it.
+#   2 threads on the 2 vCPUs (one physical core): 7497 ms, so PyTorch keeps its default
 #   rejected: DEPTH 5 (1129 ms, grade changed on 2/16), int8 weights (875 ms, grade changed on 3/16)
 RERANK_BATCH = 1
+RERANK_MAX_TOKENS = 256
 PREFETCH = 50           # candidates from each of dense and BM25 before fusion
 RRF_K = 61              # NB3 used k = 60 with ranks from 1; Qdrant counts ranks from 0 (NB6)
 TOP_K = 5               # chunks the LLM reads
