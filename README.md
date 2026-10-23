@@ -84,7 +84,7 @@ If Claude is overloaded, rate-limited or times out, `POST /ask` returns 503 and 
 docker compose exec api python -m app.bench
 ```
 
-Times the search and the reranker on the 16 simple questions, with the current settings and three cheaper ones, and shows how often the grade would change. No LLM calls, no cost.
+Times the search and the reranker on the 16 simple questions, with the current settings and five cheaper ones (fewer candidates, shorter text, no padding, 8-bit weights), and shows how far the top score moves and how often the grade would change. No LLM calls, no cost.
 
 ## Run without Docker
 
