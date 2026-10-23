@@ -17,7 +17,7 @@ from app.llm import LLM_ERROR_MESSAGE, STATUS_MESSAGE, source_label
 from app.router import route_question
 from app.search import qdrant, retrieve_scored
 
-WARM_UP_QUESTION = "Mag ik de kosten van mijn werkkamer thuis aftrekken?"
+WARM_UP_QUESTION = "Welke kosten van een werkruimte in de woning zijn aftrekbaar?"   # not the demo question: no cache hit
 
 
 def warm_up(runs=2):
