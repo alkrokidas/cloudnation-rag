@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from sentence_transformers import CrossEncoder, SentenceTransformer
 
-from app.config import EMBEDDER, RERANK_BF16, RERANK_MAX_TOKENS, RERANK_WORKERS, RERANKER
+from app.config import EMBEDDER, RERANK_MAX_TOKENS, RERANK_WORKERS, RERANKER
 
 embedder = SentenceTransformer(EMBEDDER)
 # The grader thresholds (TAU_LOW, TAU_HIGH) are raw logits, as measured in NB7 (-5 to 6.5).
@@ -20,19 +20,19 @@ if WORKERS > 1:
 _pools = {}
 
 
-def _score(features, bf16):
-    with torch.inference_mode(), torch.autocast("cpu", dtype=torch.bfloat16, enabled=bf16):
+def _score(features):
+    with torch.inference_mode():
         return float(reranker(features)["scores"].reshape(-1)[0])
 
 
-def rerank(pairs, workers=WORKERS, bf16=RERANK_BF16):
+def rerank(pairs, workers=WORKERS):
     """Raw-logit scores for (question, chunk) pairs, one pair per forward pass (no padding).
     With workers > 1 that many pairs run at the same time, one core each."""
     features = [reranker.preprocess([pair]) for pair in pairs]   # tokenize here: the tokenizer is not thread-safe
     if workers == 1:
-        return np.array([_score(f, bf16) for f in features])
+        return np.array([_score(f) for f in features])
     pool = _pools.setdefault(workers, ThreadPoolExecutor(workers))
-    return np.array(list(pool.map(lambda f: _score(f, bf16), features)))
+    return np.array(list(pool.map(_score, features)))
 
 
 @lru_cache(maxsize=256)

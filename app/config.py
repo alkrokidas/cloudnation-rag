@@ -20,10 +20,12 @@ DEPTH = 10              # NB4: candidates the reranker reads; 20 gave the same q
 #   512 -> 256 tokens per question + chunk: 1726 -> 1220 ms, grade changed on 0/16, top score moved <= 0.22
 #   (TAU_HIGH - TAU_LOW = 1.86). The reranker no longer reads the end of long chunks; the LLM still reads all of it.
 #   2 threads on the 2 vCPUs (one physical core): 7497 ms, so PyTorch keeps its default
-#   rejected: DEPTH 5 (1129 ms, grade changed on 2/16), int8 weights (875 ms, grade changed on 3/16)
+#   4-core codespace (two physical cores): 2 pairs at once, one core each: 746 -> 668 ms, same scores
+#   rejected: DEPTH 5 (1129 ms, grade changed on 2/16), int8 weights (875 ms, grade changed on 3/16),
+#   bfloat16 math (4740 ms: the codespace CPU, AMD EPYC 7763, has no bf16 hardware),
+#   192 tokens (with bf16: grade changed on 1/16)
 RERANK_MAX_TOKENS = 256
 RERANK_WORKERS = 2      # pairs scored at the same time, one core each (at most the physical cores); same scores
-RERANK_BF16 = False     # bfloat16 math: faster on CPUs with AVX-512 BF16 or AMX, but the scores move a little
 PREFETCH = 50           # candidates from each of dense and BM25 before fusion
 RRF_K = 61              # NB3 used k = 60 with ranks from 1; Qdrant counts ranks from 0 (NB6)
 TOP_K = 5               # chunks the LLM reads

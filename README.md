@@ -50,8 +50,8 @@ flowchart LR
 
 | Step | What happens | Cost |
 |---|---|---|
-| `route` | Language by word counts; simple or complex by a logistic regression on the query embedding | ~14 ms (T4) |
-| `retrieve` | Hybrid search (dense + BM25, RRF) inside Qdrant with the role filter, then the mMiniLM reranker; at most 2 chunks per document | ~130-190 ms (T4), ~0.9 s (4-core codespace) |
+| `route` | Language by word counts; simple or complex by a logistic regression on the query embedding. Also opens the connection to the Claude API in the background, so the handshake overlaps the search | ~14 ms (T4) |
+| `retrieve` | Hybrid search (dense + BM25, RRF) inside Qdrant with the role filter, then the mMiniLM reranker; at most 2 chunks per document | ~130-190 ms (T4), ~0.65 s (4-core codespace) |
 | `grade` | The reranker score of the best chunk against two thresholds: Relevant, Ambiguous or Irrelevant | 0 ms |
 | `generate` | Haiku for simple + Relevant; Sonnet for complex or Ambiguous, with a status message first | LLM |
 | `refuse` | A fixed message, no LLM call | 0 ms |
@@ -84,7 +84,7 @@ If Claude is overloaded, rate-limited or times out, `POST /ask` returns 503 and 
 docker compose exec api python -m app.bench
 ```
 
-Times the search and the reranker on the 16 simple questions, at 512 tokens (where the grader thresholds were measured), at 256 tokens (the setting now), with two pairs scored at once, with bfloat16 math and at 192 tokens, and shows how far the top score moves and how often the grade would change. No LLM calls, no cost. Options that changed the grade are listed in `app/config.py`.
+Times the search and the reranker on the 16 simple questions, at 512 tokens (where the grader thresholds were measured), at 256 tokens (the setting now), and with two pairs scored at once, and shows how far the top score moves and how often the grade would change. Then it times the connection to the Claude API, new and reused, with free `count_tokens` calls. No LLM answers, no cost. Options that changed the grade are listed in `app/config.py`.
 
 ## Run without Docker
 
@@ -124,5 +124,5 @@ data/
 
 ## Known limits
 
-- The local models run on CPU in Docker; the notebook timings were on a T4 GPU. On a 4-core codespace (two physical cores) the retrieve step takes ~0.9 s instead of 186 ms on the T4, so the first word comes after ~1.7 s on the server instead of ~1.2 s.
+- The local models run on CPU in Docker; the notebook timings were on a T4 GPU. On a 4-core codespace (two physical cores) the retrieve step takes ~0.65 s instead of 186 ms on the T4, so the first word comes after ~1.4-1.8 s on the server instead of ~1.2 s; most of the spread is Haiku's own first token (0.7-1.1 s).
 - Questions that are only an amount or an article number need an exact lookup (planned), like the ECLI lookup.
