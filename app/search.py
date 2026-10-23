@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 from qdrant_client import QdrantClient, models
 
-from app.config import COLLECTION, DEPTH, MAX_CHUNKS_PER_DOC, PREFETCH, QDRANT_URL, ROLES, RRF_K, TOP_K
+from app.config import (COLLECTION, DEPTH, MAX_CHUNKS_PER_DOC, PREFETCH, QDRANT_URL, RERANK_BATCH, ROLES, RRF_K,
+                        TOP_K)
 from app.encoders import embed_query, reranker
 
 qdrant = QdrantClient(QDRANT_URL) if QDRANT_URL == ":memory:" else QdrantClient(url=QDRANT_URL)
@@ -82,6 +83,6 @@ def retrieve_scored(search_text, question, role):
     candidates = search_qdrant(search_text, role)
     if candidates.empty:
         return candidates, float("-inf"), False
-    scores = reranker.predict([(question, t) for t in candidates["embed_text"]])
+    scores = reranker.predict([(question, t) for t in candidates["embed_text"]], batch_size=RERANK_BATCH)
     order = diverse_order(candidates, scores)
     return candidates.iloc[order].reset_index(drop=True), float(scores[order[0]]), False

@@ -51,7 +51,7 @@ flowchart LR
 | Step | What happens | Cost |
 |---|---|---|
 | `route` | Language by word counts; simple or complex by a logistic regression on the query embedding | ~14 ms (T4) |
-| `retrieve` | Hybrid search (dense + BM25, RRF) inside Qdrant with the role filter, then the mMiniLM reranker; at most 2 chunks per document | ~130-190 ms (T4), ~2.7 s (2-core codespace) |
+| `retrieve` | Hybrid search (dense + BM25, RRF) inside Qdrant with the role filter, then the mMiniLM reranker; at most 2 chunks per document | ~130-190 ms (T4), ~1.5 s (2-core codespace) |
 | `grade` | The reranker score of the best chunk against two thresholds: Relevant, Ambiguous or Irrelevant | 0 ms |
 | `generate` | Haiku for simple + Relevant; Sonnet for complex or Ambiguous, with a status message first | LLM |
 | `refuse` | A fixed message, no LLM call | 0 ms |
@@ -84,7 +84,7 @@ If Claude is overloaded, rate-limited or times out, `POST /ask` returns 503 and 
 docker compose exec api python -m app.bench
 ```
 
-Times the search and the reranker on the 16 simple questions, with the current settings and five cheaper ones (fewer candidates, shorter text, no padding, 8-bit weights), and shows how far the top score moves and how often the grade would change. No LLM calls, no cost.
+Times the search and the reranker on the 16 simple questions, with the current settings, with shorter text (256 tokens) and with all vCPUs as PyTorch threads, and shows how far the top score moves and how often the grade would change. No LLM calls, no cost. Options that changed the grade are listed in `app/config.py`.
 
 ## Run without Docker
 
@@ -124,5 +124,5 @@ data/
 
 ## Known limits
 
-- The local models run on CPU in Docker; the notebook timings were on a T4 GPU. On a 2-core codespace the reranker takes ~2.7 s per question instead of 186 ms, so the first word comes after ~3.8 s instead of ~1.2 s.
+- The local models run on CPU in Docker; the notebook timings were on a T4 GPU. On a 2-core codespace (one physical core) the reranker takes ~1.5 s per question instead of 186 ms on the T4, so the first word comes after ~2.7 s instead of ~1.2 s.
 - Questions that are only an amount or an article number need an exact lookup (planned), like the ECLI lookup.

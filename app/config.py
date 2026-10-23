@@ -15,6 +15,10 @@ MOCK_DOCS_JSON = os.getenv("MOCK_DOCS_JSON", "data/mock_docs.json")   # Dutch FI
 EMBEDDER = "intfloat/multilingual-e5-small"           # NB2: Dutch and English in one vector space, 384 dims
 RERANKER = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"   # NB4: hit@1 50% -> 75%, same as bge-m3, which had p95 3.4 s
 DEPTH = 10              # NB4: candidates the reranker reads; 20 gave the same quality
+# Codespace bench (2 vCPU, python -m app.bench, 16 questions), reranker time per question:
+#   batch 32: 2575 ms -> batch 1: 1501 ms with the same scores (no padding up to the longest pair)
+#   rejected: DEPTH 5 (1129 ms, grade changed on 2/16), int8 weights (875 ms, grade changed on 3/16)
+RERANK_BATCH = 1
 PREFETCH = 50           # candidates from each of dense and BM25 before fusion
 RRF_K = 61              # NB3 used k = 60 with ranks from 1; Qdrant counts ranks from 0 (NB6)
 TOP_K = 5               # chunks the LLM reads
