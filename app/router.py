@@ -16,6 +16,12 @@ NL_WORDS = {"de", "het", "een", "ik", "mijn", "wordt", "mag", "kan", "wat", "hoe
             "voor", "niet", "er", "bij", "dat", "die", "welke", "geldt", "ook", "van", "op", "aan", "wie", "waar", "wanneer", "moet"}
 EN_WORDS = {"the", "a", "an", "my", "can", "what", "how", "much", "are", "do", "does", "if", "for", "not", "to", "from",
             "which", "when", "who", "where", "should", "i", "of", "on", "and"}
+# Tax words too, because a question is often only keywords: "airbnb taxes" has no word of the lists above.
+NL_WORDS |= {"belasting", "belastingen", "aftrek", "aftrekken", "aftrekbaar", "kosten", "huur", "verhuur", "verhuren",
+             "woning", "huis", "kamer", "hypotheek", "hypotheekrente", "rente", "inkomen", "aangifte", "vrijstelling",
+             "werkruimte", "thuiskantoor", "uitspraak", "tarief"}
+EN_WORDS |= {"tax", "taxes", "taxed", "deduct", "deduction", "deductible", "costs", "rental", "renting", "income",
+             "mortgage", "interest", "home", "house", "room", "office", "exemption", "ruling", "rate"}
 
 
 def detect_language(question):
