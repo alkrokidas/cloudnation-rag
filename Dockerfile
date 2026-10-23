@@ -12,6 +12,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Only these two files are copied first, so a code change does not download the models again.
 COPY app/__init__.py app/config.py app/encoders.py ./app/
 RUN python -c "import app.encoders"
+# The models are inside the image now: never contact Hugging Face at runtime
+ENV HF_HUB_OFFLINE=1
 
 COPY app ./app
 COPY data ./data
