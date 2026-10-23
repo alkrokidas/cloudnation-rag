@@ -10,10 +10,12 @@ Every threshold and setting comes from a measurement in the notebooks; [`app/con
 
 ## Quick start
 
-You need Docker and an Anthropic API key.
+You need Docker and an Anthropic API key. Give the key in one of two ways, never in the code:
+
+- **GitHub Codespaces:** add `ANTHROPIC_API_KEY` as a Codespaces secret for this repository (GitHub → Settings → Codespaces → Secrets).
+- **Your own computer:** `cp .env.example .env` and paste the key after `ANTHROPIC_API_KEY=`. The `.env` file is in `.gitignore`.
 
 ```bash
-cp .env.example .env          # then paste your key after ANTHROPIC_API_KEY=
 docker compose up --build
 ```
 
