@@ -1,0 +1,39 @@
+[
+  {
+    "parent_id": "werkinstructie-werkruimte",
+    "doc_type": "policy",
+    "title": "Werkinstructie werkruimte eigen woning (FICTIEF)",
+    "classification": "internal",
+    "texts": [
+      "[FICTIEF] Bij een beroep op aftrek van kosten voor een werkruimte in de eigen woning controleert de inspecteur of de werkruimte een eigen opgang en eigen sanitaire voorzieningen heeft. Vraag de belastingplichtige om een plattegrond en foto's van de werkruimte. Bij twijfel volgt een bezoek ter plaatse."
+    ]
+  },
+  {
+    "parent_id": "werkinstructie-kamerverhuur",
+    "doc_type": "policy",
+    "title": "Werkinstructie kamerverhuur via platforms (FICTIEF)",
+    "classification": "internal",
+    "texts": [
+      "[FICTIEF] Bij kamerverhuur via platforms zoals Airbnb vraagt de inspecteur de jaaroverzichten van het platform op. Controleer of de huurder op het adres in de Basisregistratie Personen stond ingeschreven en of de verhuur tijdelijk was."
+    ]
+  },
+  {
+    "parent_id": "fiod-dossier-0417",
+    "doc_type": "investigation",
+    "title": "FIOD-dossier 0417 (FICTIEF)",
+    "classification": "fiod",
+    "texts": [
+      "[FICTIEF] Alpha BV wordt onderzocht wegens het opvoeren van aftrek voor 40 niet-bestaande werkruimtes in woningen van medewerkers. De aangiften over 2023 tot en met 2025 bevatten identieke plattegronden.",
+      "[FICTIEF] Een doorzoeking van het pand van Alpha BV is gepland. Neem vóór de datum van de doorzoeking geen contact op met de belastingplichtige of zijn adviseur."
+    ]
+  },
+  {
+    "parent_id": "fiod-dossier-0522",
+    "doc_type": "investigation",
+    "title": "FIOD-dossier 0522 (FICTIEF)",
+    "classification": "fiod",
+    "texts": [
+      "[FICTIEF] Verhuurder B. verhuurde via Airbnb meerdere kamers zonder de huurinkomsten aan te geven. Er loopt een onderzoek naar het witwassen van de opbrengsten via een buitenlandse rekening."
+    ]
+  }
+]

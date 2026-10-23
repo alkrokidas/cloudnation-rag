@@ -1,0 +1,11 @@
+# torch is installed separately in the Dockerfile (CPU-only build)
+anthropic==1.15.0
+fastapi==0.143.0
+uvicorn==0.54.0
+langgraph==1.2.16
+qdrant-client==1.19.1
+sentence-transformers==6.1.0
+transformers==5.19.0
+scikit-learn==1.9.1
+pandas==3.0.6
+numpy==2.5.4

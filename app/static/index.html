@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Belastingdienst RAG prototype</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; background: #fff; }
+    h1 { font-size: 1.3rem; }
+    label { display: block; margin: 1rem 0 .3rem; font-weight: 600; }
+    textarea, select, button { font: inherit; }
+    textarea { width: 100%; box-sizing: border-box; min-height: 5rem; padding: .5rem; }
+    button { margin-top: .8rem; padding: .5rem 1.2rem; cursor: pointer; }
+    #status { color: #8a5a00; margin-top: 1rem; }
+    #answer { white-space: pre-wrap; margin-top: 1rem; padding: 1rem; background: #f4f6f8; border-radius: 6px; }
+    #meta { font-size: .85rem; color: #555; margin-top: .8rem; }
+    #meta li { margin: .2rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Belastingdienst RAG prototype</h1>
+
+  <label for="user">Ingelogd als / Logged in as</label>
+  <select id="user">
+    <option value="demo-helpdesk">Helpdesk (public)</option>
+    <option value="demo-inspector">Inspecteur (public + internal)</option>
+    <option value="demo-fiod">FIOD (public + internal + fiod)</option>
+  </select>
+
+  <label for="question">Vraag / Question</label>
+  <textarea id="question">Mag ik de kosten van mijn werkkamer thuis aftrekken?</textarea>
+  <button id="send">Vraag / Ask</button>
+
+  <div id="status"></div>
+  <div id="answer" hidden></div>
+  <ul id="meta"></ul>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    $("send").onclick = async () => {
+      $("status").textContent = "…";
+      $("answer").hidden = true;
+      $("meta").innerHTML = "";
+      const response = await fetch("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + $("user").value },
+        body: JSON.stringify({ question: $("question").value }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        $("status").textContent = "Error " + response.status + ": " + JSON.stringify(data.detail);
+        return;
+      }
+      $("status").textContent = data.status_message
+        ? `${data.status_message} (na ${Math.round(data.status_ms)} ms)` : "";
+      $("answer").textContent = data.answer;
+      $("answer").hidden = false;
+      const lines = [
+        `${data.system} · grade ${data.grade} · first word at ${data.ttft_ms} ms · $${data.cost_usd}`,
+        "Trace: " + data.trace.map((t) => `${t.node} ${t.ms} ms`).join(" → "),
+        "Sources: " + (data.sources.join(" | ") || "none"),
+      ];
+      for (const line of lines) {
+        const li = document.createElement("li");
+        li.textContent = line;
+        $("meta").appendChild(li);
+      }
+    };
+  </script>
+</body>
+</html>
