@@ -16,8 +16,8 @@ services:
       - qdrant
 
   api:
-    build: .
-    image: cloudnation-rag
+    image: cloudnation-rag   # the image ingest builds: one build, not two copies of PyTorch and the models
+    pull_policy: never
     environment:
       QDRANT_URL: http://qdrant:6333
       # from the shell (e.g. a Codespaces secret) or from .env next to this file; never written in the code
