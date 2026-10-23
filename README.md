@@ -33,7 +33,7 @@ What starts:
 |---|---|
 | `qdrant` | Vector database: dense (e5) and sparse (BM25) vectors per chunk |
 | `ingest` | Loads `data/` into Qdrant, then exits |
-| `api` | FastAPI on port 8000: the web page and `POST /ask` |
+| `api` | FastAPI on port 8000: two warm-up searches, then the web page, `POST /ask` and `POST /ask/stream` |
 
 ## How a question flows
 
@@ -51,7 +51,7 @@ flowchart LR
 | Step | What happens | Cost |
 |---|---|---|
 | `route` | Language by word counts; simple or complex by a logistic regression on the query embedding | ~14 ms (T4) |
-| `retrieve` | Hybrid search (dense + BM25, RRF) inside Qdrant with the role filter, then the mMiniLM reranker; at most 2 chunks per document | ~130-190 ms |
+| `retrieve` | Hybrid search (dense + BM25, RRF) inside Qdrant with the role filter, then the mMiniLM reranker; at most 2 chunks per document | ~130-190 ms (T4), ~2.7 s (2-core codespace) |
 | `grade` | The reranker score of the best chunk against two thresholds: Relevant, Ambiguous or Irrelevant | 0 ms |
 | `generate` | Haiku for simple + Relevant; Sonnet for complex or Ambiguous, with a status message first | LLM |
 | `refuse` | A fixed message, no LLM call | 0 ms |
@@ -67,6 +67,24 @@ curl -s localhost:8000/ask \
 ```
 
 The token decides the role (`demo-helpdesk`, `demo-inspector`, `demo-fiod`); the request body cannot. In production the token comes from the Tax Administration's login (SSO). The response carries the answer, which system answered, the grade, the sources, the time to first word and a per-step trace.
+
+`POST /ask/stream` takes the same request and answers with server-sent events, which the web page uses, so the first word shows up when Claude writes it instead of after the whole answer:
+
+```
+data: {"type": "status", "text": "Ik zoek dit grondig uit...", "ms": 412}     System 2 only
+data: {"type": "token", "text": "Ja, "}                                       one per piece of the answer
+data: {"type": "done", "answer": "...", "system": "...", "trace": [...]}       everything POST /ask returns
+```
+
+If Claude is overloaded, rate-limited or times out, `POST /ask` returns 503 and the stream sends `{"type": "error"}` with the reason.
+
+## Timing on your machine
+
+```bash
+docker compose exec api python -m app.bench
+```
+
+Times the search and the reranker on the 16 simple questions, with the current settings and three cheaper ones, and shows how often the grade would change. No LLM calls, no cost.
 
 ## Run without Docker
 
@@ -106,6 +124,5 @@ data/
 
 ## Known limits
 
-- The answer arrives in one piece; streaming to the browser is not built yet, so the status message and the time to first word are measured on the server.
-- The local models run on CPU in Docker; the notebook timings were on a T4 GPU.
+- The local models run on CPU in Docker; the notebook timings were on a T4 GPU. On a 2-core codespace the reranker takes ~2.7 s per question instead of 186 ms, so the first word comes after ~3.8 s instead of ~1.2 s.
 - Questions that are only an amount or an article number need an exact lookup (planned), like the ECLI lookup.

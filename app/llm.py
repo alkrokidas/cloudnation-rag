@@ -16,8 +16,11 @@ def client():
     return _client
 
 
-def ask_llm(llm_key, system, user, max_tokens=4000):
-    """One streamed call. Returns the text and the numbers of the call (time to first token, cost)."""
+def ask_llm(llm_key, system, user, max_tokens=4000, on_text=None):
+    """One streamed call. Returns the text and the numbers of the call (time to first token, cost).
+
+    on_text: called with every piece of text as it arrives, so the page can show it at once.
+    """
     llm = LLMS[llm_key]
     request = dict(model=llm["name"], max_tokens=max_tokens, system=system,
                    messages=[{"role": "user", "content": user}],
@@ -34,6 +37,8 @@ def ask_llm(llm_key, system, user, max_tokens=4000):
             if ttft is None:
                 ttft = (time.perf_counter() - start) * 1000
             pieces.append(piece)
+            if on_text:
+                on_text(piece)
         message = stream.get_final_message()
     total = (time.perf_counter() - start) * 1000
     text = "".join(pieces)
@@ -65,6 +70,7 @@ Reply with the query only."""
 
 REFUSAL_MESSAGE = "Dit staat niet in de beschikbare bronnen. / This is not in the available sources."
 STATUS_MESSAGE = "Ik zoek dit grondig uit... / Looking into this carefully..."   # shown while System 2 thinks
+LLM_ERROR_MESSAGE = "Claude is nu niet bereikbaar, probeer het opnieuw. / Claude is unavailable right now, please try again."
 
 
 def is_refusal(text):

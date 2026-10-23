@@ -38,33 +38,79 @@
   <script>
     const $ = (id) => document.getElementById(id);
 
+    // POST /ask/stream sends server-sent events: status (System 2), token (a piece of the answer), done, error
     $("send").onclick = async () => {
+      const started = performance.now();
+      let firstWord = null, finished = false, status = false;
+      $("send").disabled = true;
       $("status").textContent = "…";
+      $("answer").textContent = "";
       $("answer").hidden = true;
       $("meta").innerHTML = "";
-      const response = await fetch("/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + $("user").value },
-        body: JSON.stringify({ question: $("question").value }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        $("status").textContent = "Error " + response.status + ": " + JSON.stringify(data.detail);
-        return;
-      }
-      $("status").textContent = data.status_message
-        ? `${data.status_message} (na ${Math.round(data.status_ms)} ms)` : "";
-      $("answer").textContent = data.answer;
-      $("answer").hidden = false;
-      const lines = [
-        `${data.system} · grade ${data.grade} · first word at ${data.ttft_ms} ms · $${data.cost_usd}`,
-        "Trace: " + data.trace.map((t) => `${t.node} ${t.ms} ms`).join(" → "),
-        "Sources: " + (data.sources.join(" | ") || "none"),
-      ];
-      for (const line of lines) {
-        const li = document.createElement("li");
-        li.textContent = line;
-        $("meta").appendChild(li);
+
+      const handle = (event) => {
+        if (event.type === "status") {
+          $("status").textContent = `${event.text} (na ${event.ms} ms)`;
+          status = true;
+        } else if (event.type === "token") {
+          if (firstWord === null) {
+            firstWord = performance.now() - started;
+            if (!status) $("status").textContent = "";       // clear the "…", keep the System 2 message
+          }
+          $("answer").textContent += event.text;
+          $("answer").hidden = false;
+        } else if (event.type === "done") {
+          finished = true;
+          const total = performance.now() - started;
+          firstWord ??= total;
+          if (!status) $("status").textContent = "";
+          $("answer").textContent = event.answer;      // the final text, e.g. the fixed refusal message
+          $("answer").hidden = false;
+          const lines = [
+            `${event.system} · grade ${event.grade} · first word on screen at ${Math.round(firstWord)} ms` +
+              ` (server ${event.ttft_ms} ms) · complete at ${Math.round(total)} ms · $${event.cost_usd}`,
+            "Trace: " + event.trace.map((t) => `${t.node} ${t.ms} ms`).join(" → "),
+            "Sources: " + (event.sources.join(" | ") || "none"),
+          ];
+          for (const line of lines) {
+            const li = document.createElement("li");
+            li.textContent = line;
+            $("meta").appendChild(li);
+          }
+        } else if (event.type === "error") {
+          finished = true;
+          $("status").textContent = event.detail;
+        }
+      };
+
+      try {
+        const response = await fetch("/ask/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + $("user").value },
+          body: JSON.stringify({ question: $("question").value }),
+        });
+        if (!response.ok) {
+          const data = await response.json();
+          $("status").textContent = "Error " + response.status + ": " + JSON.stringify(data.detail);
+          return;
+        }
+        const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+        let buffer = "";
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += value;
+          const events = buffer.split("\n\n");     // an event ends with a blank line
+          buffer = events.pop();                    // the last part may be an unfinished event
+          for (const raw of events) {
+            if (raw.startsWith("data: ")) handle(JSON.parse(raw.slice(6)));
+          }
+        }
+        if (!finished) $("status").textContent = "De verbinding is verbroken. / The connection was lost.";
+      } catch (error) {
+        $("status").textContent = "Error: " + error.message;
+      } finally {
+        $("send").disabled = false;
       }
     };
   </script>

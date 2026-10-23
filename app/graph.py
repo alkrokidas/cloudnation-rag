@@ -7,10 +7,12 @@ route -> retrieve -> grade -> generate   (Relevant, or Ambiguous with no retry l
 import time
 from typing import TypedDict
 
+from langgraph.config import get_stream_writer
 from langgraph.graph import END, START, StateGraph
 
 from app.config import MAX_RETRIES, SYSTEM1_MODEL, TAU_HIGH, TAU_LOW, TIME_LIMIT_MS
-from app.llm import REFUSAL_MESSAGE, REWRITE_PROMPT, ask_llm, format_sources, is_refusal, system_prompt
+from app.llm import (REFUSAL_MESSAGE, REWRITE_PROMPT, STATUS_MESSAGE, ask_llm, format_sources, is_refusal,
+                     system_prompt)
 from app.router import route_question
 from app.search import retrieve_scored
 
@@ -71,20 +73,39 @@ def rewrite(state):
     return {"query": text.strip(), "retries": state["retries"] + 1, "cost": state["cost"] + stats["cost"]}
 
 
+class AnswerStream:
+    """Sends the answer to the page piece by piece (POST /ask/stream; with invoke the writes go nowhere).
+    Text that could still become NOT_IN_SOURCES is held back, so the page never shows the refusal code."""
+
+    def __init__(self, write):
+        self.write, self.text, self.sent = write, "", 0
+
+    def __call__(self, piece):
+        self.text += piece
+        if "NOT_IN_SOURCES".startswith(self.text.strip()):
+            return
+        self.write({"type": "token", "text": self.text[self.sent:]})
+        self.sent = len(self.text)
+
+
 def generate(state):
+    write = get_stream_writer()
     system2 = state["complex"] or state["grade"] == "Ambiguous"    # complex, or the search stayed uncertain
     llm_key = "sonnet" if system2 else SYSTEM1_MODEL
     status_ms = elapsed_ms(state) if system2 else None             # System 2: the status message goes out now
+    if system2:
+        write({"type": "status", "text": STATUS_MESSAGE, "ms": round(status_ms)})
     user = f"<sources>\n{format_sources(state['rows'])}\n</sources>\n\nQuestion: {state['question']}"
     call_start = elapsed_ms(state)
     text, stats = ask_llm(llm_key, system_prompt(state["language"], 8 if system2 else 5), user,
-                          max_tokens=16000 if system2 else 4000)
+                          max_tokens=16000 if system2 else 4000, on_text=AnswerStream(write))
     return {"answer": REFUSAL_MESSAGE if is_refusal(text) else text,
             "system": "System 2 (Sonnet)" if system2 else "System 1 (Haiku)",
             "ttft_ms": call_start + stats["ttft_ms"], "status_ms": status_ms, "cost": state["cost"] + stats["cost"]}
 
 
 def refuse(state):
+    get_stream_writer()({"type": "token", "text": REFUSAL_MESSAGE})
     return {"answer": REFUSAL_MESSAGE, "system": "no LLM", "ttft_ms": elapsed_ms(state)}
 
 
@@ -123,8 +144,12 @@ builder.add_edge("refuse", END)
 crag = builder.compile()
 
 
+def initial_state(question, role):
+    return {"question": question, "role": role, "query": question, "language": "nl", "complex": False,
+            "p_complex": 0.0, "rows": None, "score": None, "exact": False, "grade": "", "retries": 0,
+            "system": "", "answer": "", "started": time.perf_counter(), "ttft_ms": 0.0,
+            "status_ms": None, "cost": 0.0, "trace": []}
+
+
 def ask(question, role):
-    return crag.invoke({"question": question, "role": role, "query": question, "language": "nl", "complex": False,
-                        "p_complex": 0.0, "rows": None, "score": None, "exact": False, "grade": "", "retries": 0,
-                        "system": "", "answer": "", "started": time.perf_counter(), "ttft_ms": 0.0,
-                        "status_ms": None, "cost": 0.0, "trace": []})
+    return crag.invoke(initial_state(question, role))
