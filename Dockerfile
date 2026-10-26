@@ -16,9 +16,12 @@ RUN python -c "import app.encoders"
 ENV HF_HUB_OFFLINE=1
 # print() lines show up in `docker compose logs` at once, not when a buffer fills
 ENV PYTHONUNBUFFERED=1
+# For the tests (docker compose exec api python -m pytest); after the models, so it does not download them again
+RUN pip install --no-cache-dir pytest==9.1.1
 
 COPY app ./app
 COPY data ./data
+COPY tests ./tests
 
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

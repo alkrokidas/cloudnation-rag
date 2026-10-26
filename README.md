@@ -78,6 +78,19 @@ data: {"type": "done", "answer": "...", "system": "...", "trace": [...]}       e
 
 If Claude is overloaded, rate-limited or times out, `POST /ask` returns 503 and the stream sends `{"type": "error"}` with the reason.
 
+## Tests and evaluation
+
+With the containers running (in Codespaces add `-f docker-compose.yml -f docker-compose.codespaces.yml` after `docker compose`):
+
+```bash
+docker compose exec api python -m pytest                    # 64 tests, no LLM calls, no cost
+docker compose exec api python -m app.evaluate --search     # golden set: search and grade only, no cost
+docker compose exec api python -m app.evaluate              # golden set with the LLM answers (~$0.20)
+```
+
+- **pytest** checks the rules that must never break: no role ever receives a chunk above its level (leak test of NB6, every candidate and every final source), at most 2 chunks per document, ECLI as an exact lookup, the answer language, every CRAG path with a fake search and a fake LLM (Relevant, Ambiguous, Irrelevant, ECLI, a model refusal), the threshold edges, and that the role comes from the token and never from the request body.
+- **evaluate** runs the golden set in [`app/golden.py`](app/golden.py) (24 answerable questions, each with every source that answers it, plus 10 out-of-scope questions) and prints hit@1/hit@3 per group, the grade per kind of question, refusals, the first word p50/p95 per system and the cost. It exits with code 1 when a release gate in `app/config.py` fails (leaks, hit@3, out-of-scope graded Relevant, out-of-scope answered), so a CI pipeline can block a release.
+
 ## Timing on your machine
 
 ```bash
@@ -110,7 +123,11 @@ app/
   llm.py        Claude calls, prompts, source formatting
   graph.py      the CRAG state machine (LangGraph)
   main.py       FastAPI
+  golden.py     golden set, out-of-scope and leak questions
+  evaluate.py   golden set report and release gates
+  bench.py      timing of search, reranker settings and the API connection
   static/       the web page
+tests/          pytest: RBAC, search rules, router, CRAG paths, API
 data/
   chunks_v2.csv     Wet IB 2001 (per lid) and four rulings, from the notebooks
   mock_docs.json    fictitious internal instructions and FIOD files, marked FICTIEF

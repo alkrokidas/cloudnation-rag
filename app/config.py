@@ -66,3 +66,11 @@ LLMS = {
 }
 THINKING = {"haiku": {"type": "disabled"}}    # System 1 answers without thinking; Sonnet thinks as needed (adaptive)
 EFFORT = {"haiku": "low", "sonnet": "medium"}
+
+# --- Release gates (python -m app.evaluate exits 1 if one fails): the numbers a new release must keep ---
+GATES = {
+    "leaks": 0,                   # chunks outside the role in the leak test (NB6: 0 of 90)
+    "min_hit_at_3": 0.80,         # right source in the top 3 (NB4: 83% with one right source per question)
+    "out_of_scope_relevant": 0,   # out-of-scope questions graded Relevant (NB7: 0 of 10)
+    "out_of_scope_answered": 0,   # out-of-scope questions the LLM answered instead of refusing
+}
