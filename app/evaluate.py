@@ -16,7 +16,7 @@ from app import ingest
 from app.config import GATES, ROLES
 from app.golden import GOLDEN, LEAK_TESTS, OUT_OF_SCOPE, ref, right_sources
 from app.graph import ask, zone
-from app.judge import JUDGE_LLM, citations_ok, judge, language_ok
+from app.judge import JUDGE_LLM, bad_citations, judge, language_ok
 from app.llm import REFUSAL_MESSAGE
 from app.main import warm_up, warm_up_llm
 from app.search import retrieve_scored, search_qdrant
@@ -33,10 +33,12 @@ def run(question, expected, group, llm, use_judge):
     right = right_sources(expected) if expected else set()
     rank = next((i for i, r in enumerate(refs, start=1) if r in right), None)
     refused = result["answer"] == REFUSAL_MESSAGE if result else None
-    checks = {"lang ok": None, "cites ok": None, "wrong claims": None, "answers": None, "judge cost": 0.0, "claims": []}
+    checks = {"lang ok": None, "cites ok": None, "wrong claims": None, "answers": None, "judge cost": 0.0, "claims": [],
+              "bad cites": [], "answer": result["answer"] if result else ""}
     if result and not refused and expected:          # an answer to an answerable question: check the answer itself
         answer = result["answer"]
-        checks.update({"lang ok": language_ok(answer, result["language"]), "cites ok": citations_ok(answer, rows)})
+        bad = bad_citations(answer, rows)
+        checks.update({"lang ok": language_ok(answer, result["language"]), "cites ok": not bad, "bad cites": bad})
         if use_judge:
             verdict, checks["judge cost"] = judge(question, rows, answer)
             if verdict:
@@ -73,8 +75,8 @@ def main():
     rows = [run(q, expected, group, llm, use_judge) for q, expected, group in GOLDEN]
     rows += [run(q, None, "out of scope", llm, use_judge) for q in OUT_OF_SCOPE]
     df = pd.DataFrame(rows).astype({"rank": "Int64"})      # Int64: a whole number or <NA> (no right source found)
-    hidden = ["cost", "judge cost", "claims"] + ([] if llm else ["system", "refused", "first word ms", "lang ok",
-                                                              "cites ok", "wrong claims", "answers"])
+    hidden = ["cost", "judge cost", "claims", "bad cites", "answer"] + ([] if llm else [
+        "system", "refused", "first word ms", "lang ok", "cites ok", "wrong claims", "answers"])
     with pd.option_context("display.width", 250, "display.max_colwidth", 60):
         print(df.drop(columns=hidden).to_string(index=False))
 
@@ -102,7 +104,11 @@ def main():
         answered = df[df["lang ok"].notna()]
         print(f"\nAnswers to answerable questions ({len(answered)}, refusals not counted):")
         print(f"  in the language of the question: {int(answered['lang ok'].sum())}/{len(answered)}")
+        for _, row in answered[~answered["lang ok"].astype(bool)].iterrows():
+            print(f"    {row['question']}\n      answer: {row['answer'][:150]}")
         print(f"  citations all copy a source:     {int(answered['cites ok'].sum())}/{len(answered)}")
+        for _, row in answered[~answered["cites ok"].astype(bool)].iterrows():
+            print(f"    {row['question']}\n      not a source label: {' | '.join(row['bad cites'])}")
         if use_judge:
             judged = answered[answered["wrong claims"].notna()]
             print(f"  judge ({JUDGE_LLM}), no wrong claim:  {int((judged['wrong claims'] == 0).sum())}/{len(judged)}"

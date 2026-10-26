@@ -51,6 +51,20 @@ def test_ecli_match_is_relevant_without_score(monkeypatch):
     assert result["grade"] == "Relevant" and calls == ["haiku"]
 
 
+def test_the_answer_language_comes_last(monkeypatch):
+    """Rule 4 of the system prompt alone was not enough: Haiku answered Dutch questions in English (26/10)."""
+    users = []
+    run(monkeypatch, RELEVANT)                  # the fake router (Dutch) and search stay in place
+
+    def fake_llm(llm_key, system, user, max_tokens=4000, on_text=None):
+        users.append(user)
+        return "Ja (Wet IB 2001, art. 3.16 lid 13).", {"ttft_ms": 1, "total_ms": 1, "cost": 0.0}
+
+    monkeypatch.setattr(graph, "ask_llm", fake_llm)
+    graph.ask("vraag", "helpdesk")
+    assert users[0].endswith("Question: vraag\n\nAnswer in Dutch.")
+
+
 def test_model_refusal_shows_the_fixed_message(monkeypatch):
     result, _ = run(monkeypatch, RELEVANT, answer="NOT_IN_SOURCES")
     assert result["answer"] == REFUSAL_MESSAGE

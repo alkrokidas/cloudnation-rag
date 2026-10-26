@@ -11,8 +11,8 @@ from langgraph.config import get_stream_writer
 from langgraph.graph import END, START, StateGraph
 
 from app.config import MAX_RETRIES, SYSTEM1_MODEL, TAU_HIGH, TAU_LOW, TIME_LIMIT_MS
-from app.llm import (REFUSAL_MESSAGE, REWRITE_PROMPT, STATUS_MESSAGE, ask_llm, format_sources, is_refusal,
-                     system_prompt)
+from app.llm import (LANGUAGE_NAMES, REFUSAL_MESSAGE, REWRITE_PROMPT, STATUS_MESSAGE, ask_llm, format_sources,
+                     is_refusal, system_prompt)
 from app.router import route_question
 from app.search import retrieve_scored
 
@@ -95,7 +95,10 @@ def generate(state):
     status_ms = elapsed_ms(state) if system2 else None             # System 2: the status message goes out now
     if system2:
         write({"type": "status", "text": STATUS_MESSAGE, "ms": round(status_ms)})
-    user = f"<sources>\n{format_sources(state['rows'])}\n</sources>\n\nQuestion: {state['question']}"
+    # The language once more, right before the answer: as rule 4 of the system prompt alone, Haiku answered Dutch
+    # questions in English (26/10: the demo question once, "Hoeveel inkomstenbelasting betaal ik in box 1?" once)
+    user = (f"<sources>\n{format_sources(state['rows'])}\n</sources>\n\nQuestion: {state['question']}\n\n"
+            f"Answer in {LANGUAGE_NAMES[state['language']]}.")
     call_start = elapsed_ms(state)
     text, stats = ask_llm(llm_key, system_prompt(state["language"], 8 if system2 else 5), user,
                           max_tokens=16000 if system2 else 4000, on_text=AnswerStream(write))

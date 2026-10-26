@@ -39,11 +39,16 @@ def language_ok(answer, language):
     return detect_language(answer) == language
 
 
-def citations_ok(answer, rows):
-    """At least one citation, and each one copies the label of a source the assistant was given."""
+def bad_citations(answer, rows):
+    """The citations that copy no label of a source the assistant was given; ["no citation"] if there is none."""
     labels = {source_label(row) for _, row in rows.iterrows()}
     cited = [part.strip() for group in CITATION.findall(answer) for part in group.split(";")]
-    return bool(cited) and all(c in labels for c in cited)
+    return [c for c in cited if c not in labels] if cited else ["no citation"]
+
+
+def citations_ok(answer, rows):
+    """At least one citation, and each one copies the label of a source the assistant was given."""
+    return not bad_citations(answer, rows)
 
 
 def judge(question, rows, answer):

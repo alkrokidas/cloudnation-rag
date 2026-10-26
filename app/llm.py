@@ -49,6 +49,8 @@ def ask_llm(llm_key, system, user, max_tokens=4000, on_text=None):
     return text, {"ttft_ms": round(ttft or total), "total_ms": round(total), "cost": cost}
 
 
+# Rule 5 also said "say that the tax calculator does the calculation" until 26/10: the judge flagged that sentence in
+# 5 of 19 answers (no source mentions a calculator), often where no calculation was asked.
 SYSTEM_PROMPT = """You answer questions about Dutch income tax for employees of the Dutch Tax Administration.
 
 Rules:
@@ -56,7 +58,7 @@ Rules:
 2. After every claim, cite its source in parentheses, copying the source's cite attribute exactly, for example (Wet IB 2001, art. 3.114 lid 1-2).
 3. If the sources do not contain the answer, or the question asks about a tax year that the law sources do not cover, reply only with: NOT_IN_SOURCES
 4. Answer in {language}, in at most {sentences} sentences.
-5. Never calculate tax amounts yourself. If the question needs a calculation, quote the rule and the numbers from the source and say that the tax calculator does the calculation."""
+5. Never calculate tax amounts yourself. If the question needs a calculation, quote the rule and the numbers from the source instead."""
 
 LANGUAGE_NAMES = {"nl": "Dutch", "en": "English"}
 

@@ -83,7 +83,7 @@ If Claude is overloaded, rate-limited or times out, `POST /ask` returns 503 and 
 With the containers running (in Codespaces add `-f docker-compose.yml -f docker-compose.codespaces.yml` after `docker compose`):
 
 ```bash
-docker compose exec api python -m pytest                    # 70 tests, no LLM calls, no cost
+docker compose exec api python -m pytest                    # 71 tests, no LLM calls, no cost
 docker compose exec api python -m app.evaluate --search     # golden set: search and grade only, no cost
 docker compose exec api python -m app.evaluate              # golden set with the answers and their checks (~$0.30)
 ```

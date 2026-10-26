@@ -20,6 +20,8 @@ def test_citations_must_copy_a_source():
                               "Wet IB 2001, art. 3.16 lid 1).", ROWS)
     assert not judge.citations_ok("Dat mag (Wet IB 2001, art. 3.16 lid 13).", ROWS)      # not one of its sources
     assert not judge.citations_ok("Dat mag.", ROWS)                                        # no citation at all
+    assert judge.bad_citations("Dat mag (Wet IB 2001, art. 3.16 lid 13).", ROWS) == ["Wet IB 2001, art. 3.16 lid 13"]
+    assert judge.bad_citations("Dat mag.", ROWS) == ["no citation"]
 
 
 def test_language_follows_the_router():
