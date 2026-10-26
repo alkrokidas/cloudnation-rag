@@ -63,6 +63,12 @@ def build():
     return chunks
 
 
+def ensure_collection():
+    """Without Docker there is no ingest step: Qdrant runs inside the process and starts empty (tests, Colab)."""
+    if not qdrant.collection_exists(COLLECTION):
+        build()
+
+
 def wait_for_qdrant(seconds=60):
     """In Docker the Qdrant container may still be starting when this one runs."""
     print(f"Waiting for Qdrant at {QDRANT_URL} ...", flush=True)

@@ -14,10 +14,16 @@ embedder = SentenceTransformer(EMBEDDER)
 reranker = CrossEncoder(RERANKER, max_length=RERANK_MAX_TOKENS, activation_fn=torch.nn.Identity())
 
 PHYSICAL_CORES = torch.get_num_threads()          # PyTorch's default: one thread per physical core
-WORKERS = min(RERANK_WORKERS, PHYSICAL_CORES)     # on a 1-core machine two at once would fight (7.5 s on 2 vCPUs)
+# On a 1-core machine two at once would fight (7.5 s on 2 vCPUs); a GPU runs the passes one after another anyway.
+WORKERS = 1 if torch.cuda.is_available() else min(RERANK_WORKERS, PHYSICAL_CORES)
 if WORKERS > 1:
     torch.set_num_threads(1)                      # each pair gets one core of its own
 _pools = {}
+
+
+def _on_device(features):
+    """predict() moves the tokens to the model's device itself; calling the model directly, we do it (GPU)."""
+    return {k: v.to(reranker.device) if isinstance(v, torch.Tensor) else v for k, v in features.items()}
 
 
 def _score(features):
@@ -28,7 +34,7 @@ def _score(features):
 def rerank(pairs, workers=WORKERS):
     """Raw-logit scores for (question, chunk) pairs, one pair per forward pass (no padding).
     With workers > 1 that many pairs run at the same time, one core each."""
-    features = [reranker.preprocess([pair]) for pair in pairs]   # tokenize here: the tokenizer is not thread-safe
+    features = [_on_device(reranker.preprocess([pair])) for pair in pairs]   # tokenize here: not thread-safe
     if workers == 1:
         return np.array([_score(f) for f in features])
     pool = _pools.setdefault(workers, ThreadPoolExecutor(workers))

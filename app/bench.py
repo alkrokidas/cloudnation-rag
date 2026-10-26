@@ -15,6 +15,7 @@ from collections import Counter
 
 import torch
 
+from app import ingest
 from app.config import DEPTH, TAU_HIGH, TAU_LOW
 from app.encoders import PHYSICAL_CORES, WORKERS, rerank, reranker
 from app.graph import zone
@@ -45,6 +46,7 @@ def timed(fn):
 
 
 def main():
+    ingest.ensure_collection()
     print(f"CPU: {cpu_name()}, {os.cpu_count()} vCPUs, {PHYSICAL_CORES} physical cores")
     print(f"{len(QUESTIONS)} questions, role helpdesk, DEPTH {DEPTH}, app uses {WORKERS} pair(s) at once", flush=True)
     candidates, search_ms = {}, []

@@ -44,8 +44,7 @@ def warm_up_llm():
 
 @asynccontextmanager
 async def lifespan(app):
-    if not qdrant.collection_exists(COLLECTION):   # without Docker there is no ingest step: build it here
-        ingest.build()
+    ingest.ensure_collection()
     warm_up()
     warm_up_llm()
     yield

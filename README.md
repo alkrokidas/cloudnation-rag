@@ -111,6 +111,10 @@ uvicorn app.main:app
 
 Without `QDRANT_URL`, Qdrant runs inside the Python process and the app loads `data/` at startup.
 
+## Demo on a GPU (Colab)
+
+[`colab/gpu_demo.ipynb`](colab/gpu_demo.ipynb) runs the same app on a free Colab T4: it clones the repository, installs `requirements.txt` (Colab's own torch has CUDA), starts the API in the background and opens the page in a browser tab. On the T4 the retrieve step takes ~0.2 s instead of ~0.65 s on a 4-core codespace. It needs two Colab Secrets: `ANTHROPIC_API_KEY` and `GITHUB_TOKEN` (fine-grained, read-only `Contents` of this repository). The last cells run the golden set on the GPU.
+
 ## Project layout
 
 ```
@@ -127,6 +131,7 @@ app/
   evaluate.py   golden set report and release gates
   bench.py      timing of search and reranker settings
   static/       the web page
+colab/          gpu_demo.ipynb: the same app on a Colab T4
 tests/          pytest: RBAC, search rules, router, CRAG paths, API
 data/
   chunks_v2.csv     Wet IB 2001 (per lid) and four rulings, from the notebooks
@@ -141,5 +146,5 @@ data/
 
 ## Known limits
 
-- The local models run on CPU in Docker; the notebook timings were on a T4 GPU. On a 4-core codespace (two physical cores) the retrieve step takes ~0.65 s instead of 186 ms on the T4, so the first word comes after ~1.4-1.8 s on the server instead of ~1.2 s; most of the spread is Haiku's own first token (0.7-1.1 s).
+- The local models run on CPU in Docker; the notebook timings were on a T4 GPU. On a 4-core codespace (two physical cores) the retrieve step takes ~0.65 s instead of 186 ms on the T4, so over the golden set System 1's first word on the server is p50 ~1.5 s and p95 ~2.6 s (26/10); most of the spread is Haiku's own first token (0.7-1.1 s). For the demo, see the GPU notebook above.
 - Questions that are only an amount or an article number need an exact lookup (planned), like the ECLI lookup.

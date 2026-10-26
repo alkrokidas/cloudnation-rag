@@ -11,6 +11,7 @@ import sys
 import numpy as np
 import pandas as pd
 
+from app import ingest
 from app.config import GATES, ROLES
 from app.golden import GOLDEN, LEAK_TESTS, OUT_OF_SCOPE, ref, right_sources
 from app.graph import ask, zone
@@ -51,6 +52,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--search", action="store_true", help="search and grade only, no LLM calls")
     llm = not parser.parse_args().search
+    ingest.ensure_collection()
     warm_up(runs=1)
     if llm:
         warm_up_llm()
