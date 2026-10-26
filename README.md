@@ -113,7 +113,7 @@ Without `QDRANT_URL`, Qdrant runs inside the Python process and the app loads `d
 
 ## Demo on a GPU (Colab)
 
-[`colab/gpu_demo.ipynb`](colab/gpu_demo.ipynb) runs the same app on a free Colab T4: it clones the repository, installs `requirements.txt` (Colab's own torch has CUDA), starts the API in the background and opens the page in a browser tab. On the T4 the retrieve step takes ~0.2 s instead of ~0.65 s on a 4-core codespace. It needs two Colab Secrets: `ANTHROPIC_API_KEY` and `GITHUB_TOKEN` (fine-grained, read-only `Contents` of this repository). The last cells run the golden set on the GPU.
+[`colab/gpu_demo.ipynb`](colab/gpu_demo.ipynb) runs the same app on a free Colab T4: it clones the repository, installs `requirements.txt` (Colab's own torch has CUDA), starts the API in the background and opens the page. On the T4 the retrieve step takes ~0.1-0.2 s instead of ~0.65 s on a 4-core codespace (26/10: first word 898 ms on the server). Colab's own proxy delivers the answer all at once (first word on screen after ~3 s), so for the demo the page opens through an ngrok link, which streams; Cloudflare's quick tunnels do not support server-sent events. Colab Secrets: `ANTHROPIC_API_KEY`, `GITHUB_TOKEN` (fine-grained, read-only `Contents` of this repository) and `NGROK_AUTHTOKEN` (free ngrok account). Anyone with the ngrok link can use the app while it runs, so the last cell closes it. The last cells run the golden set on the GPU.
 
 ## Project layout
 
