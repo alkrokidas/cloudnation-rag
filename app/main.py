@@ -11,9 +11,9 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from app import ingest
-from app.config import COLLECTION, DEMO_USERS
+from app.config import COLLECTION, DEMO_USERS, SYSTEM1_MODEL
 from app.graph import ask, crag, initial_state
-from app.llm import LLM_ERROR_MESSAGE, STATUS_MESSAGE, source_label
+from app.llm import LLM_ERROR_MESSAGE, STATUS_MESSAGE, ask_llm, source_label
 from app.router import route_question
 from app.search import qdrant, retrieve_scored
 
@@ -30,11 +30,24 @@ def warm_up(runs=2):
         print(f"Warm-up search {n}/{runs}: {(time.perf_counter() - start) * 1000:.0f} ms", flush=True)
 
 
+def warm_up_llm():
+    """The first Claude call of a process is slow (26/10: 5226 ms against 1200-1570 ms for the next ones), so one
+    tiny call runs before the first user does. Costs about $0.00001."""
+    start = time.perf_counter()
+    try:
+        ask_llm(SYSTEM1_MODEL, "Reply with: OK", "OK", max_tokens=5)
+    except Exception as error:      # no key yet: the app still starts, and the first question reports the error
+        print(f"Warm-up Claude: skipped ({type(error).__name__})", flush=True)
+        return
+    print(f"Warm-up Claude: {(time.perf_counter() - start) * 1000:.0f} ms", flush=True)
+
+
 @asynccontextmanager
 async def lifespan(app):
     if not qdrant.collection_exists(COLLECTION):   # without Docker there is no ingest step: build it here
         ingest.build()
     warm_up()
+    warm_up_llm()
     yield
 
 

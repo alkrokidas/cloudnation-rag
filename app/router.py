@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 
 from app.config import ROUTER_TAU
 from app.encoders import embed_query, embedder
-from app.search import tokenize
+from app.search import ECLI_PATTERN, tokenize
 
 NL_WORDS = {"de", "het", "een", "ik", "mijn", "wordt", "mag", "kan", "wat", "hoe", "hoeveel", "zijn", "ben", "heb", "als",
             "voor", "niet", "er", "bij", "dat", "die", "welke", "geldt", "ook", "van", "op", "aan", "wie", "waar", "wanneer", "moet"}
@@ -76,5 +76,9 @@ router_model = make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000)
 
 def route_question(question):
     """Returns (language, complex, P(complex))."""
+    if not tokenize(ECLI_PATTERN.sub("", question)):
+        # A bare case number is a lookup. The classifier learned from questions, not codes: on 26/10 it sent
+        # ECLI:NL:HR:2014:2872 to System 2 (first word 4324 ms; with Haiku in NB5: 515 ms).
+        return detect_language(question), False, 0.0
     p = float(router_model.predict_proba([embed_query(question)])[0, 1])
     return detect_language(question), p > ROUTER_TAU, p

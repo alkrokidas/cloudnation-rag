@@ -15,7 +15,7 @@ from app.config import GATES, ROLES
 from app.golden import GOLDEN, LEAK_TESTS, OUT_OF_SCOPE, ref, right_sources
 from app.graph import ask, zone
 from app.llm import REFUSAL_MESSAGE
-from app.main import warm_up
+from app.main import warm_up, warm_up_llm
 from app.search import retrieve_scored, search_qdrant
 
 
@@ -52,6 +52,8 @@ def main():
     parser.add_argument("--search", action="store_true", help="search and grade only, no LLM calls")
     llm = not parser.parse_args().search
     warm_up(runs=1)
+    if llm:
+        warm_up_llm()
 
     rows = [run(q, expected, group, llm) for q, expected, group in GOLDEN]
     rows += [run(q, None, "out of scope", llm) for q in OUT_OF_SCOPE]

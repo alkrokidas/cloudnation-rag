@@ -1,7 +1,7 @@
 """The answer language is decided in code (NB5): small words, then tax words; a tie is Dutch."""
 import pytest
 
-from app.router import EN_WORDS, NL_WORDS, detect_language
+from app.router import EN_WORDS, NL_WORDS, detect_language, route_question
 
 
 @pytest.mark.parametrize("question, language", [
@@ -18,3 +18,8 @@ def test_language(question, language):
 
 def test_no_word_in_both_lists():
     assert not NL_WORDS & EN_WORDS
+
+
+def test_bare_case_number_is_simple():
+    """26/10: the classifier called a bare ECLI complex and sent it to Sonnet (4.3 s instead of ~0.5 s)."""
+    assert route_question("ECLI:NL:HR:2014:2872")[1] is False

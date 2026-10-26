@@ -12,7 +12,7 @@ from langgraph.graph import END, START, StateGraph
 
 from app.config import MAX_RETRIES, SYSTEM1_MODEL, TAU_HIGH, TAU_LOW, TIME_LIMIT_MS
 from app.llm import (REFUSAL_MESSAGE, REWRITE_PROMPT, STATUS_MESSAGE, ask_llm, format_sources, is_refusal,
-                     system_prompt, warm_connection)
+                     system_prompt)
 from app.router import route_question
 from app.search import retrieve_scored
 
@@ -53,7 +53,6 @@ def zone(score):
 
 
 def route(state):
-    warm_connection()         # the TLS handshake to the API runs while we search, not after
     language, complex_, p = route_question(state["question"])
     return {"language": language, "complex": complex_, "p_complex": p}
 

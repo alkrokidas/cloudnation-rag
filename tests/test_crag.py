@@ -22,7 +22,6 @@ def run(monkeypatch, score, complex_=False, answer="Ja (Wet IB 2001, art. 3.16 l
     monkeypatch.setattr(graph, "route_question", lambda question: ("nl", complex_, 0.9 if complex_ else 0.1))
     monkeypatch.setattr(graph, "retrieve_scored", lambda search, question, role: (SOURCE, score, score is None))
     monkeypatch.setattr(graph, "ask_llm", fake_llm)
-    monkeypatch.setattr(graph, "warm_connection", lambda: None)
     return graph.ask("vraag", "helpdesk"), calls
 
 

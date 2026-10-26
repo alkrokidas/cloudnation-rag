@@ -1,11 +1,10 @@
-"""Times search, reranker and the API connection on this machine, so the settings are chosen from numbers.
+"""Times search and reranker on this machine, so the reranker settings are chosen from numbers.
 
     docker compose exec api python -m app.bench
 
 Runs the 16 simple questions of the router examples (the System 1 questions) at 512 tokens, where TAU_LOW and
 TAU_HIGH were measured, and with faster settings, and shows how far the top score moves and how often the grade
-changes compared to 512 tokens. Then times free count_tokens calls to the API on a new and on a reused
-connection. No LLM answers, no cost. Takes 1-2 minutes.
+changes compared to 512 tokens. No LLM calls, no cost. Takes 1-2 minutes.
 Rows tried and rejected on 23/10 (DEPTH 5, int8 weights, 2 threads on 2 vCPUs, bf16, 192 tokens) are in config.py.
 """
 import os
@@ -19,7 +18,6 @@ import torch
 from app.config import DEPTH, TAU_HIGH, TAU_LOW
 from app.encoders import PHYSICAL_CORES, WORKERS, rerank, reranker
 from app.graph import zone
-from app.llm import count_tokens
 from app.router import ROUTER_EXAMPLES
 from app.search import search_qdrant
 
@@ -44,24 +42,6 @@ def timed(fn):
     start = time.perf_counter()
     out = fn()
     return out, (time.perf_counter() - start) * 1000
-
-
-def api_connection(runs=3):
-    """The SDK closes a connection after 5 s without use, so after 6 s the next call opens a new one."""
-    try:
-        timed(count_tokens)
-    except Exception as error:
-        print(f"{'API connection':30} skipped: {type(error).__name__} (is ANTHROPIC_API_KEY set?)")
-        return
-    new, reused = [], []
-    for _ in range(runs):
-        time.sleep(6)
-        new.append(timed(count_tokens)[1])
-        reused.append(timed(count_tokens)[1])
-    new_ms, reused_ms = statistics.median(new), statistics.median(reused)
-    print(f"{'API call, new connection':30} median {new_ms:5.0f} ms")
-    print(f"{'API call, reused connection':30} median {reused_ms:5.0f} ms   "
-          f"-> opening the connection costs ~{new_ms - reused_ms:.0f} ms (the app now does it during the search)")
 
 
 def main():
@@ -95,7 +75,6 @@ def main():
               f"score moved <= {moved:4.2f}   grade changed {changed}/{len(QUESTIONS)}   "
               f"(R {counts['Relevant']}, A {counts['Ambiguous']}, I {counts['Irrelevant']})", flush=True)
     print(f"For scale: TAU_LOW {TAU_LOW}, TAU_HIGH {TAU_HIGH}, {TAU_HIGH - TAU_LOW:.2f} apart")
-    api_connection()
 
 
 if __name__ == "__main__":

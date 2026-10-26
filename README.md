@@ -33,7 +33,7 @@ What starts:
 |---|---|
 | `qdrant` | Vector database: dense (e5) and sparse (BM25) vectors per chunk |
 | `ingest` | Loads `data/` into Qdrant, then exits |
-| `api` | FastAPI on port 8000: two warm-up searches, then the web page, `POST /ask` and `POST /ask/stream` |
+| `api` | FastAPI on port 8000: two warm-up searches and one tiny Claude call (the first call of a process is slow), then the web page, `POST /ask` and `POST /ask/stream` |
 
 ## How a question flows
 
@@ -50,7 +50,7 @@ flowchart LR
 
 | Step | What happens | Cost |
 |---|---|---|
-| `route` | Language by word counts; simple or complex by a logistic regression on the query embedding. Also opens the connection to the Claude API in the background, so the handshake overlaps the search | ~14 ms (T4) |
+| `route` | Language by word counts; simple or complex by a logistic regression on the query embedding (a bare ECLI number is simple) | ~14 ms (T4) |
 | `retrieve` | Hybrid search (dense + BM25, RRF) inside Qdrant with the role filter, then the mMiniLM reranker; at most 2 chunks per document | ~130-190 ms (T4), ~0.65 s (4-core codespace) |
 | `grade` | The reranker score of the best chunk against two thresholds: Relevant, Ambiguous or Irrelevant | 0 ms |
 | `generate` | Haiku for simple + Relevant; Sonnet for complex or Ambiguous, with a status message first | LLM |
@@ -83,7 +83,7 @@ If Claude is overloaded, rate-limited or times out, `POST /ask` returns 503 and 
 With the containers running (in Codespaces add `-f docker-compose.yml -f docker-compose.codespaces.yml` after `docker compose`):
 
 ```bash
-docker compose exec api python -m pytest                    # 64 tests, no LLM calls, no cost
+docker compose exec api python -m pytest                    # 65 tests, no LLM calls, no cost
 docker compose exec api python -m app.evaluate --search     # golden set: search and grade only, no cost
 docker compose exec api python -m app.evaluate              # golden set with the LLM answers (~$0.20)
 ```
@@ -97,7 +97,7 @@ docker compose exec api python -m app.evaluate              # golden set with th
 docker compose exec api python -m app.bench
 ```
 
-Times the search and the reranker on the 16 simple questions, at 512 tokens (where the grader thresholds were measured), at 256 tokens (the setting now), and with two pairs scored at once, and shows how far the top score moves and how often the grade would change. Then it times the connection to the Claude API, new and reused, with free `count_tokens` calls. No LLM answers, no cost. Options that changed the grade are listed in `app/config.py`.
+Times the search and the reranker on the 16 simple questions, at 512 tokens (where the grader thresholds were measured), at 256 tokens (the setting now), and with two pairs scored at once, and shows how far the top score moves and how often the grade would change. No LLM calls, no cost. Options that changed the grade are listed in `app/config.py`.
 
 ## Run without Docker
 
@@ -125,7 +125,7 @@ app/
   main.py       FastAPI
   golden.py     golden set, out-of-scope and leak questions
   evaluate.py   golden set report and release gates
-  bench.py      timing of search, reranker settings and the API connection
+  bench.py      timing of search and reranker settings
   static/       the web page
 tests/          pytest: RBAC, search rules, router, CRAG paths, API
 data/

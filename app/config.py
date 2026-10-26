@@ -66,6 +66,8 @@ LLMS = {
 }
 THINKING = {"haiku": {"type": "disabled"}}    # System 1 answers without thinking; Sonnet thinks as needed (adaptive)
 EFFORT = {"haiku": "low", "sonnet": "medium"}
+# Rejected 26/10: opening the API connection in the background during the search. Codespace bench: a call on a
+# new connection 174 ms, on a reused one 161 ms, so the handshake costs ~13 ms and the extra call was not worth it.
 
 # --- Release gates (python -m app.evaluate exits 1 if one fails): the numbers a new release must keep ---
 GATES = {

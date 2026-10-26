@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app.graph as graph
+import app.main
 from app.main import app as api
 
 
@@ -19,7 +20,7 @@ def fake_llm(llm_key, system, user, max_tokens=4000, on_text=None):
 def client():
     with pytest.MonkeyPatch.context() as patch:   # no Claude calls in these tests
         patch.setattr(graph, "ask_llm", fake_llm)
-        patch.setattr(graph, "warm_connection", lambda: None)
+        patch.setattr(app.main, "warm_up_llm", lambda: None)
         with TestClient(api) as test_client:
             yield test_client
 

@@ -1,44 +1,19 @@
 """Calls to Claude, the prompts, and how sources are shown to the model (NB5)."""
-import threading
 import time
 
 import anthropic
 
-from app.config import EFFORT, LLMS, SYSTEM1_MODEL, THINKING
+from app.config import EFFORT, LLMS, THINKING
 
 _client = None
-_client_lock = threading.Lock()
 
 
 def client():
     """Created on first use, so the app can start (and /health answer) before a key is set."""
     global _client
-    with _client_lock:
-        if _client is None:
-            _client = anthropic.Anthropic()    # reads ANTHROPIC_API_KEY from the environment (.env), never from code
+    if _client is None:
+        _client = anthropic.Anthropic()        # reads ANTHROPIC_API_KEY from the environment (.env), never from code
     return _client
-
-
-def count_tokens():
-    """A free API call: used to open the connection and to time it."""
-    return client().messages.count_tokens(model=LLMS[SYSTEM1_MODEL]["name"],
-                                          messages=[{"role": "user", "content": "warm-up"}])
-
-
-def _warm():
-    try:
-        count_tokens()
-    except Exception:     # no key or no network: the real call reports it to the user
-        pass
-
-
-def warm_connection():
-    """Opens the HTTPS connection to the API in the background, while the search runs.
-
-    The SDK closes a connection after 5 s without use, so in a demo every question would otherwise wait for
-    DNS + TCP + TLS before its request even reaches Claude. `python -m app.bench` times that handshake.
-    """
-    threading.Thread(target=_warm, daemon=True).start()
 
 
 def ask_llm(llm_key, system, user, max_tokens=4000, on_text=None):
