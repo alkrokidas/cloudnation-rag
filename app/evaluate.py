@@ -60,9 +60,12 @@ def main():
         print(df.drop(columns=["cost"] if llm else ["system", "refused", "first word ms", "cost"]).to_string(index=False))
 
     answerable, out = df[df["group"] != "out of scope"], df[df["group"] == "out of scope"]
-    hit1, hit3 = (answerable["rank"] == 1).mean(), (answerable["rank"] <= 3).mean()
+    # no right source found (<NA>) is a miss: without fillna, pandas would leave it out of the mean
+    answerable = answerable.assign(hit1=(answerable["rank"] == 1).fillna(False).astype(bool),
+                                   hit3=(answerable["rank"] <= 3).fillna(False).astype(bool))
+    hit1, hit3 = answerable["hit1"].mean(), answerable["hit3"].mean()
     print(f"\nSearch, {len(answerable)} answerable questions: hit@1 {hit1:.0%}, hit@3 {hit3:.0%}")
-    print((answerable.assign(hit3=answerable["rank"] <= 3).groupby("group")["hit3"]
+    print((answerable.groupby("group")["hit3"]
            .agg(lambda s: f"{s.sum()}/{len(s)}")).to_string())
     print("\nGrade per kind of question:")
     kind = pd.Series(np.where(df["group"] == "out of scope", "out of scope", "answerable"), name="question")
@@ -70,7 +73,7 @@ def main():
 
     out_answered = 0
     if llm:
-        right_top3 = answerable[answerable["rank"] <= 3]
+        right_top3 = answerable[answerable["hit3"]]
         out_answered = int((~out["refused"]).sum())
         print(f"\nRefused (by the grader or the LLM) although a right source was in the top 3: {int(right_top3['refused'].sum())}/{len(right_top3)}")
         print(f"Out of scope but answered by the LLM: {out_answered}/{len(out)}")
