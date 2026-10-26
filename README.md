@@ -83,13 +83,13 @@ If Claude is overloaded, rate-limited or times out, `POST /ask` returns 503 and 
 With the containers running (in Codespaces add `-f docker-compose.yml -f docker-compose.codespaces.yml` after `docker compose`):
 
 ```bash
-docker compose exec api python -m pytest                    # 67 tests, no LLM calls, no cost
+docker compose exec api python -m pytest                    # 70 tests, no LLM calls, no cost
 docker compose exec api python -m app.evaluate --search     # golden set: search and grade only, no cost
-docker compose exec api python -m app.evaluate              # golden set with the LLM answers (~$0.20)
+docker compose exec api python -m app.evaluate              # golden set with the answers and their checks (~$0.30)
 ```
 
 - **pytest** checks the rules that must never break: no role ever receives a chunk above its level (leak test of NB6, every candidate and every final source), at most 2 chunks per document, ECLI as an exact lookup, the answer language, every CRAG path with a fake search and a fake LLM (Relevant, Ambiguous, Irrelevant, ECLI, a model refusal), the threshold edges, and that the role comes from the token and never from the request body.
-- **evaluate** runs the golden set in [`app/golden.py`](app/golden.py) (24 answerable questions, each with every source that answers it, plus 10 out-of-scope questions) and prints hit@1/hit@3 per group, the grade per kind of question, refusals, the first word p50/p95 per system and the cost. It exits with code 1 when a release gate in `app/config.py` fails (leaks, hit@3, out-of-scope graded Relevant, out-of-scope answered), so a CI pipeline can block a release.
+- **evaluate** runs the golden set in [`app/golden.py`](app/golden.py) (24 answerable questions, each with every source that answers it, plus 10 out-of-scope questions) and prints hit@1/hit@3 per group, the grade per kind of question, refusals, the first word p50/p95 per system and the cost. It exits with code 1 when a release gate in `app/config.py` fails (leaks, hit@3, out-of-scope graded Relevant, out-of-scope answered), so a CI pipeline can block a release. It also checks the answers themselves ([`app/judge.py`](app/judge.py)): the language, that every citation copies one of the sources, and a judge (Sonnet) that lists the claims the sources do not support, such as an exception read as the rule (`--no-judge` skips the paid judge).
 
 ## Timing on your machine
 
@@ -129,6 +129,7 @@ app/
   main.py       FastAPI
   golden.py     golden set, out-of-scope and leak questions
   evaluate.py   golden set report and release gates
+  judge.py      checks on the answers: language, citations, a judge model
   bench.py      timing of search and reranker settings
   static/       the web page
 colab/          gpu_demo.ipynb: the same app on a Colab T4
