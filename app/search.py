@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 from qdrant_client import QdrantClient, models
 
-from app.config import COLLECTION, DEPTH, MAX_CHUNKS_PER_DOC, PREFETCH, QDRANT_URL, ROLES, RRF_K, TOP_K
+from app.config import (COLLECTION, DEPTH, LEGAL_TERMS, MAX_CHUNKS_PER_DOC, PREFETCH, QDRANT_URL, ROLES, RRF_K,
+                        TOP_K)
 from app.encoders import embed_query, rerank
 
 qdrant = QdrantClient(QDRANT_URL) if QDRANT_URL == ":memory:" else QdrantClient(url=QDRANT_URL)
@@ -30,6 +31,14 @@ def sparse_query(question):
     return models.SparseVector(indices=list(counts), values=[float(v) for v in counts.values()])
 
 
+def with_legal_terms(text):
+    """Adds the law's word after an everyday one ("werkkamer" -> "werkruimte"), so BM25 and the embedding also
+    find the paragraph written in the law's words. The user's own words stay in."""
+    words = tokenize(text)
+    extra = [LEGAL_TERMS[w] for w in dict.fromkeys(words) if w in LEGAL_TERMS and LEGAL_TERMS[w] not in words]
+    return f"{text} {' '.join(dict.fromkeys(extra))}" if extra else text
+
+
 def role_filter(role):
     """WHERE classification IN (...). The only place a filter is built, so no path can forget it (NB6)."""
     return models.Filter(must=[models.FieldCondition(key="classification", match=models.MatchAny(any=ROLES[role]))])
@@ -38,8 +47,9 @@ def role_filter(role):
 def search_qdrant(question, role, k=DEPTH):
     """Dense + BM25, fused with RRF inside Qdrant. The filter runs in both prefetches, before ranking."""
     flt = role_filter(role)
-    prefetch = [models.Prefetch(query=embed_query(question).tolist(), using="dense", filter=flt, limit=PREFETCH)]
-    q_sparse = sparse_query(question)
+    text = with_legal_terms(question)
+    prefetch = [models.Prefetch(query=embed_query(text).tolist(), using="dense", filter=flt, limit=PREFETCH)]
+    q_sparse = sparse_query(text)
     if q_sparse.indices:
         prefetch.append(models.Prefetch(query=q_sparse, using="bm25", filter=flt, limit=PREFETCH))
     result = qdrant.query_points(COLLECTION, prefetch=prefetch, query=models.RrfQuery(rrf=models.Rrf(k=RRF_K)),

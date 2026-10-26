@@ -30,6 +30,13 @@ PREFETCH = 50           # candidates from each of dense and BM25 before fusion
 RRF_K = 61              # NB3 used k = 60 with ranks from 1; Qdrant counts ranks from 0 (NB6)
 TOP_K = 5               # chunks the LLM reads
 MAX_CHUNKS_PER_DOC = 2  # NB5-NB7: 4 of 5 chunks often came from one ruling and pushed out the law article
+# Everyday Dutch -> the law's own word, added to the search text (the reranker still reads the user's question).
+# 26/10 (T4): "Mag ik de kosten van mijn werkkamer thuis aftrekken?" found art. 3.16 lid 1 at search rank 14, cut
+# by DEPTH 10, although the reranker would have put it first (0.476 against -0.995); Haiku then answered from lid 13,
+# a different case, once with the meaning reversed. Asked in the law's words, lid 1 ranks 1 (4.957). The same gap as
+# NB5 (everyday Dutch vs legal terms). A word is added only after a measured miss; in production the list would
+# come from the Belastingdienst's own glossary. Rejected: DEPTH 15 (also brings lid 1 in, +5 pairs = ~+0.35 s on CPU).
+LEGAL_TERMS = {"werkkamer": "werkruimte", "thuiskantoor": "werkruimte", "thuis": "woning"}
 
 # --- RBAC (NB6): least privilege, every role sees its own level and below ---
 ROLES = {

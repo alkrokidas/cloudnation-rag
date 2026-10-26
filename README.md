@@ -51,7 +51,7 @@ flowchart LR
 | Step | What happens | Cost |
 |---|---|---|
 | `route` | Language by word counts; simple or complex by a logistic regression on the query embedding (a bare ECLI number is simple) | ~14 ms (T4) |
-| `retrieve` | Hybrid search (dense + BM25, RRF) inside Qdrant with the role filter, then the mMiniLM reranker; at most 2 chunks per document | ~130-190 ms (T4), ~0.65 s (4-core codespace) |
+| `retrieve` | Hybrid search (dense + BM25, RRF) inside Qdrant with the role filter, with the law's word added to an everyday one (werkkamer → werkruimte), then the mMiniLM reranker on the user's own question; at most 2 chunks per document | ~130-190 ms (T4), ~0.65 s (4-core codespace) |
 | `grade` | The reranker score of the best chunk against two thresholds: Relevant, Ambiguous or Irrelevant | 0 ms |
 | `generate` | Haiku for simple + Relevant; Sonnet for complex or Ambiguous, with a status message first | LLM |
 | `refuse` | A fixed message, no LLM call | 0 ms |
@@ -83,7 +83,7 @@ If Claude is overloaded, rate-limited or times out, `POST /ask` returns 503 and 
 With the containers running (in Codespaces add `-f docker-compose.yml -f docker-compose.codespaces.yml` after `docker compose`):
 
 ```bash
-docker compose exec api python -m pytest                    # 65 tests, no LLM calls, no cost
+docker compose exec api python -m pytest                    # 67 tests, no LLM calls, no cost
 docker compose exec api python -m app.evaluate --search     # golden set: search and grade only, no cost
 docker compose exec api python -m app.evaluate              # golden set with the LLM answers (~$0.20)
 ```
