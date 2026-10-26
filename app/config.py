@@ -14,7 +14,11 @@ MOCK_DOCS_JSON = os.getenv("MOCK_DOCS_JSON", "data/mock_docs.json")   # Dutch FI
 # --- Retrieval (NB2-NB4) ---
 EMBEDDER = "intfloat/multilingual-e5-small"           # NB2: Dutch and English in one vector space, 384 dims
 RERANKER = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"   # NB4: hit@1 50% -> 75%, same as bge-m3, which had p95 3.4 s
-DEPTH = 10              # NB4: candidates the reranker reads; 20 gave the same quality
+DEPTH = 15              # candidates the reranker reads. NB4: 10, as 20 gave the same quality on the golden set (counted
+                        # per article). 26/10: art. 3.16 lid 1 came 14th for "werkkamer thuis" (see LEGAL_TERMS), so Alek
+                        # chose 15 as well as the word list: it also catches words the list does not know.
+                        # Cost: 5 more pairs for the reranker, ~+0.35 s on a 4-core codespace, little on a T4 GPU.
+                        # The grader thresholds were measured at 10: more candidates can only raise the top score.
 # Codespace bench (2 vCPU, python -m app.bench, 16 questions), reranker time per question:
 #   batch 32: 2575 ms -> one pair at a time: 1501 ms with the same scores (no padding up to the longest pair)
 #   512 -> 256 tokens per question + chunk: 1726 -> 1220 ms, grade changed on 0/16, top score moved <= 0.22
@@ -35,7 +39,7 @@ MAX_CHUNKS_PER_DOC = 2  # NB5-NB7: 4 of 5 chunks often came from one ruling and 
 # by DEPTH 10, although the reranker would have put it first (0.476 against -0.995); Haiku then answered from lid 13,
 # a different case, once with the meaning reversed. Asked in the law's words, lid 1 ranks 1 (4.957). The same gap as
 # NB5 (everyday Dutch vs legal terms). A word is added only after a measured miss; in production the list would
-# come from the Belastingdienst's own glossary. Rejected: DEPTH 15 (also brings lid 1 in, +5 pairs = ~+0.35 s on CPU).
+# come from the Belastingdienst's own glossary. Together with DEPTH 15 (Alek's choice, 26/10).
 LEGAL_TERMS = {"werkkamer": "werkruimte", "thuiskantoor": "werkruimte", "thuis": "woning"}
 
 # --- RBAC (NB6): least privilege, every role sees its own level and below ---
