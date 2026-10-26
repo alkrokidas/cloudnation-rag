@@ -44,7 +44,7 @@ def run(question, expected, group, llm, use_judge):
                                "answers": verdict["answers_the_question"]})
     return {"group": group, "grade": grade, "rank": rank,
             "system": result["system"] if result else "", "refused": refused,
-            "first word ms": round(result["ttft_ms"]) if result else None,
+            "first word ms": round(result["ttft_ms"]) if result else None, "hedged": result["hedged"] if result else None,
             **checks, "cost": result["cost"] if result else 0.0, "question": question}
 
 
@@ -73,8 +73,8 @@ def main():
     rows = [run(q, expected, group, llm, use_judge) for q, expected, group in GOLDEN]
     rows += [run(q, None, "out of scope", llm, use_judge) for q in OUT_OF_SCOPE]
     df = pd.DataFrame(rows).astype({"rank": "Int64"})      # Int64: a whole number or <NA> (no right source found)
-    hidden = ["cost", "judge cost", "claims"] + ([] if llm else ["system", "refused", "first word ms", "lang ok",
-                                                              "cites ok", "wrong claims", "answers"])
+    hidden = ["cost", "judge cost", "claims"] + ([] if llm else ["system", "refused", "first word ms", "hedged",
+                                                              "lang ok", "cites ok", "wrong claims", "answers"])
     with pd.option_context("display.width", 250, "display.max_colwidth", 60):
         print(df.drop(columns=hidden).to_string(index=False))
 
@@ -99,6 +99,7 @@ def main():
         print("First word on the server (the brief's budget: p95 < 1500 ms):")
         for system, ms in df.groupby("system")["first word ms"]:
             print(f"  {system:20} n {len(ms):2}   p50 {ms.median():5.0f} ms   p95 {np.percentile(ms, 95):5.0f} ms")
+        print(f"Hedged calls (a second call because the first word was late): {int(df['hedged'].fillna(False).sum())}")
         answered = df[df["lang ok"].notna()]
         print(f"\nAnswers to answerable questions ({len(answered)}, refusals not counted):")
         print(f"  in the language of the question: {int(answered['lang ok'].sum())}/{len(answered)}")

@@ -1,9 +1,11 @@
 """Calls to Claude, the prompts, and how sources are shown to the model (NB5)."""
+import queue
+import threading
 import time
 
 import anthropic
 
-from app.config import EFFORT, LLMS, THINKING
+from app.config import EFFORT, HEDGE_AFTER_MS, LLMS, THINKING
 
 _client = None
 
@@ -16,8 +18,28 @@ def client():
     return _client
 
 
+def _open(llm_key, request):
+    if llm_key == "sonnet":      # if the safety filters refuse, the API retries on another model (beta)
+        return client().beta.messages.stream(**request, betas=["server-side-fallback-2026-07-01"], fallbacks="default")
+    return client().messages.stream(**request)
+
+
+def _run(llm_key, request, call, events, stop):
+    """One streamed call in its own thread. Every piece goes on the queue, marked with the call that sent it."""
+    try:
+        with _open(llm_key, request) as stream:
+            for piece in stream.text_stream:
+                if stop.is_set():
+                    return                      # the other call won: leaving the with-block closes this one
+                events.put((call, "text", piece))
+            events.put((call, "done", stream.get_final_message()))
+    except Exception as error:
+        events.put((call, "error", error))
+
+
 def ask_llm(llm_key, system, user, max_tokens=4000, on_text=None):
-    """One streamed call. Returns the text and the numbers of the call (time to first token, cost).
+    """One streamed call, or two for a hedged model (see HEDGE_AFTER_MS). Returns the text and the numbers of the
+    call (time to first token, cost, hedged).
 
     on_text: called with every piece of text as it arrives, so the page can show it at once.
     """
@@ -27,26 +49,48 @@ def ask_llm(llm_key, system, user, max_tokens=4000, on_text=None):
                    output_config={"effort": EFFORT[llm_key]})
     if THINKING.get(llm_key):
         request["thinking"] = THINKING[llm_key]
-    if llm_key == "sonnet":      # if the safety filters refuse, the API retries on another model (beta)
-        call = client().beta.messages.stream(**request, betas=["server-side-fallback-2026-07-01"], fallbacks="default")
-    else:
-        call = client().messages.stream(**request)
-    start, ttft, pieces = time.perf_counter(), None, []
-    with call as stream:
-        for piece in stream.text_stream:
+    events, stops, errors = queue.Queue(), {1: threading.Event(), 2: threading.Event()}, []
+    start, ttft, pieces, winner, message = time.perf_counter(), None, [], None, None
+    threading.Thread(target=_run, args=(llm_key, request, 1, events, stops[1]), daemon=True).start()
+    calls, hedge_after = 1, HEDGE_AFTER_MS.get(llm_key)
+    while message is None:
+        wait = None
+        if hedge_after and calls == 1 and winner is None:
+            wait = max(0.0, hedge_after / 1000 - (time.perf_counter() - start))
+        try:
+            call, kind, payload = events.get(timeout=wait)
+        except queue.Empty:                     # no first word yet: the same call once more, first to answer wins
+            calls = 2
+            threading.Thread(target=_run, args=(llm_key, request, 2, events, stops[2]), daemon=True).start()
+            continue
+        if kind == "error":
+            if call == winner:
+                raise payload
+            errors.append(payload)
+            if winner is None and len(errors) == calls:
+                raise errors[0]
+            continue
+        if winner is None:
+            winner = call
+            stops[3 - call].set()
+        if call != winner:
+            continue
+        if kind == "text":
             if ttft is None:
                 ttft = (time.perf_counter() - start) * 1000
-            pieces.append(piece)
+            pieces.append(payload)
             if on_text:
-                on_text(piece)
-        message = stream.get_final_message()
+                on_text(payload)
+        else:
+            message = payload
     total = (time.perf_counter() - start) * 1000
     text = "".join(pieces)
     if message.stop_reason == "refusal":
         text = "NOT_IN_SOURCES"
     usage = message.usage
-    cost = (usage.input_tokens * llm["price_in"] + usage.output_tokens * llm["price_out"]) / 1e6
-    return text, {"ttft_ms": round(ttft or total), "total_ms": round(total), "cost": cost}
+    inputs = usage.input_tokens * calls       # the other call of a hedge is billed for its input too
+    cost = (inputs * llm["price_in"] + usage.output_tokens * llm["price_out"]) / 1e6
+    return text, {"ttft_ms": round(ttft or total), "total_ms": round(total), "cost": cost, "hedged": calls == 2}
 
 
 SYSTEM_PROMPT = """You answer questions about Dutch income tax for employees of the Dutch Tax Administration.

@@ -35,6 +35,7 @@ class State(TypedDict):
     ttft_ms: float       # when the user saw the first word
     status_ms: object    # System 2: when the user saw the status message
     cost: float
+    hedged: bool         # System 1: a second call was sent because the first word was late
     trace: list          # (node, ms) for every step
 
 
@@ -101,7 +102,8 @@ def generate(state):
                           max_tokens=16000 if system2 else 4000, on_text=AnswerStream(write))
     return {"answer": REFUSAL_MESSAGE if is_refusal(text) else text,
             "system": "System 2 (Sonnet)" if system2 else "System 1 (Haiku)",
-            "ttft_ms": call_start + stats["ttft_ms"], "status_ms": status_ms, "cost": state["cost"] + stats["cost"]}
+            "ttft_ms": call_start + stats["ttft_ms"], "status_ms": status_ms, "cost": state["cost"] + stats["cost"],
+            "hedged": stats.get("hedged", False)}
 
 
 def refuse(state):
@@ -148,7 +150,7 @@ def initial_state(question, role):
     return {"question": question, "role": role, "query": question, "language": "nl", "complex": False,
             "p_complex": 0.0, "rows": None, "score": None, "exact": False, "grade": "", "retries": 0,
             "system": "", "answer": "", "started": time.perf_counter(), "ttft_ms": 0.0,
-            "status_ms": None, "cost": 0.0, "trace": []}
+            "status_ms": None, "cost": 0.0, "hedged": False, "trace": []}
 
 
 def ask(question, role):

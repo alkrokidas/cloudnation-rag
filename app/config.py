@@ -77,6 +77,12 @@ LLMS = {
 }
 THINKING = {"haiku": {"type": "disabled"}}    # System 1 answers without thinking; Sonnet thinks as needed (adaptive)
 EFFORT = {"haiku": "low", "sonnet": "medium"}
+# Hedged call (System 1 only): if Haiku's first word has not come after this many ms, the same call is sent once
+# more and the first one to answer wins; the other closes at its first word. 26/10 on a T4: 14 of 18 System 1
+# answers had their first word at 0.48-0.92 s, 4 at 1.8-1.9 s, one of them an exact ECLI lookup with no search
+# and no reranker: the tail is Haiku's own first token. A hedged call bills one more input (~$0.0003 for Haiku).
+# Sonnet is not hedged: it is 20x the price and its users see the status message first.
+HEDGE_AFTER_MS = {"haiku": 600}
 # Rejected 26/10: opening the API connection in the background during the search. Codespace bench: a call on a
 # new connection 174 ms, on a reused one 161 ms, so the handshake costs ~13 ms and the extra call was not worth it.
 
