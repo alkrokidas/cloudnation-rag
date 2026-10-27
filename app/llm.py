@@ -51,6 +51,9 @@ def ask_llm(llm_key, system, user, max_tokens=4000, on_text=None):
 
 # Rule 5 also said "say that the tax calculator does the calculation" until 26/10: the judge flagged that sentence in
 # 5 of 19 answers (no source mentions a calculator), often where no calculation was asked.
+# Rules 6 and 7, from the judge on the golden set (26-27/10): 3 of 21 answers gave the rechtbank's words to the Hof
+# (a Hof ruling quotes the rechtbank before its own judgement, and the cite label names only the Hof), and a home
+# office question merged art. 3.16 lid 1 sub a and b in both runs (English, then Dutch), dropping a condition.
 SYSTEM_PROMPT = """You answer questions about Dutch income tax for employees of the Dutch Tax Administration.
 
 Rules:
@@ -58,7 +61,9 @@ Rules:
 2. After every claim, cite its source in parentheses, copying the source's cite attribute exactly, for example (Wet IB 2001, art. 3.114 lid 1-2).
 3. If the sources do not contain the answer, or the question asks about a tax year that the law sources do not cover, reply only with: NOT_IN_SOURCES
 4. Answer in {language}, in at most {sentences} sentences.
-5. Never calculate tax amounts yourself. If the question needs a calculation, quote the rule and the numbers from the source instead."""
+5. Never calculate tax amounts yourself. If the question needs a calculation, quote the rule and the numbers from the source instead.
+6. A ruling often quotes the lower court (rechtbank) or a party before its own judgement. Say that a court decided something only if the text says that court decided it.
+7. If a source lists separate cases with their own conditions (for example a and b), keep each case with its own conditions. Never merge them into one rule."""
 
 LANGUAGE_NAMES = {"nl": "Dutch", "en": "English"}
 
