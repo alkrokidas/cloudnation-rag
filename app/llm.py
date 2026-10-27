@@ -111,6 +111,14 @@ def system_prompt(language, sentences):
     return SYSTEM_PROMPT.replace("{language}", LANGUAGE_NAMES[language]).replace("{sentences}", str(sentences))
 
 
+def user_message(rows, question, language):
+    """The sources, the question, and the language once more right before the answer: as rule 4 of the system prompt
+    alone, Haiku answered Dutch questions in English (26/10: the demo question once, "Hoeveel inkomstenbelasting
+    betaal ik in box 1?" once)."""
+    return (f"<sources>\n{format_sources(rows)}\n</sources>\n\nQuestion: {question}\n\n"
+            f"Answer in {LANGUAGE_NAMES[language]}.")
+
+
 REWRITE_PROMPT = """Rewrite the user's question as one short search query in Dutch, using the legal terms of the Dutch income tax act (Wet IB 2001), for example "eigenwoningschuld" instead of "hypotheekrente" and "werkruimte" instead of "thuiskantoor".
 Reply with the query only."""
 

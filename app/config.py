@@ -83,7 +83,10 @@ EFFORT = {"haiku": "low", "sonnet": "medium"}
 # answers had their first word at 0.48-0.92 s, 4 at 1.8-1.9 s, one of them an exact ECLI lookup with no search
 # and no reranker: the tail is Haiku's own first token. A hedged call bills one more input (~$0.0003 for Haiku).
 # Sonnet is not hedged: it is 20x the price and its users see the status message first.
-HEDGE_AFTER_MS = {"haiku": 600}
+# Tried 26/10 evening with 600 ms: every one of 19 calls hedged (the API was slow for all of them that evening) and
+# p95 stayed 1886 ms. 600 ms was below the median; "The Tail at Scale" hedges after the ~95th percentile. Off until
+# python -m app.tail has measured the delay.
+HEDGE_AFTER_MS = {}
 # Rejected 26/10: opening the API connection in the background during the search. Codespace bench: a call on a
 # new connection 174 ms, on a reused one 161 ms, so the handshake costs ~13 ms and the extra call was not worth it.
 

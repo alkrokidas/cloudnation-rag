@@ -83,7 +83,7 @@ If Claude is overloaded, rate-limited or times out, `POST /ask` returns 503 and 
 With the containers running (in Codespaces add `-f docker-compose.yml -f docker-compose.codespaces.yml` after `docker compose`):
 
 ```bash
-docker compose exec api python -m pytest                    # 71 tests, no LLM calls, no cost
+docker compose exec api python -m pytest                    # 76 tests, no LLM calls, no cost
 docker compose exec api python -m app.evaluate --search     # golden set: search and grade only, no cost
 docker compose exec api python -m app.evaluate              # golden set with the answers and their checks (~$0.30)
 ```
@@ -98,6 +98,12 @@ docker compose exec api python -m app.bench
 ```
 
 Times the search and the reranker on the 16 simple questions, at 512 tokens (where the grader thresholds were measured), at 256 tokens (the setting now), and with two pairs scored at once, and shows how far the top score moves and how often the grade would change. No LLM calls, no cost. Options that changed the grade are listed in `app/config.py`.
+
+```bash
+docker compose exec api python -m app.tail
+```
+
+Haiku's time to first token over 80 rounds of the demo question, without a hedged call and with a second call after 700 or 1000 ms, in turns, so all variants meet the API at the same moments. Shows p50/p90/p95/p99, how often the hedge fired and the cost per 1000 questions. About 6 minutes, ~$0.10.
 
 ## Run without Docker
 
@@ -131,6 +137,7 @@ app/
   evaluate.py   golden set report and release gates
   judge.py      checks on the answers: language, citations, a judge model
   bench.py      timing of search and reranker settings
+  tail.py       Haiku's time to first token, with and without a hedged call
   static/       the web page
 colab/          gpu_demo.ipynb: the same app on a Colab T4
 tests/          pytest: RBAC, search rules, router, CRAG paths, API
